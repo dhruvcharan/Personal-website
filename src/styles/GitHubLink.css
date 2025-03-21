@@ -1,0 +1,19 @@
+a {
+  color: #0366d6;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: #0056b3;
+}
+
+.github-link {
+  display: flex;
+  align-items: center;
+  font-size: 1.2em;
+}
+
+.github-icon {
+  margin-right: 8px;
+}

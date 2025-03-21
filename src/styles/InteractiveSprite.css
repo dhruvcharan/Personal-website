@@ -1,0 +1,53 @@
+.interactive-sprite {
+  position: absolute;
+  width: 100px; /* Adjust based on your sprite size */
+  height: 100px; /* Adjust based on your sprite size */
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 10;
+  pointer-events: none; /* Allow clicks to pass through */
+  transform: translate(-50%, -50%); /* Center the sprite on the position */
+}
+
+.interactive-sprite.github {
+  background-image: url('../assets/interactions/github-interaction.png');
+  width: 128px;
+  height: 128px;
+  margin-left: -32px;
+  margin-top: -32px;
+}
+
+.interactive-sprite.linkedin {
+  background-image: url('../assets/interactions/linkedin-interaction.png');
+  width: 128px;
+  height: 128px;
+  margin-left: -32px;
+  margin-top: -32px;
+}
+
+.interactive-sprite.blog {
+  background-image: url('../assets/interactions/blog-interaction.png');
+  width: 128px;
+  height: 128px;
+  margin-left: -32px;
+  margin-top: -32px;
+}
+
+.interactive-sprite.interacting {
+  transform: scale(1.2);
+  z-index: 1000;
+  animation: interactionPulse 0.5s ease infinite;
+}
+
+@keyframes interactionPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

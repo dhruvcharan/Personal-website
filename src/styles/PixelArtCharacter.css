@@ -1,0 +1,122 @@
+.pixel-art-character {
+    position: absolute;
+    width: 128px;
+    height: 128px;
+    transform-origin: center;
+}
+
+.character-sprite {
+    width: 100%;
+    height: 100%;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/* Idle animation */
+.idle .character-sprite {
+    background-image: url('../assets/character-idle.png');
+    animation: idle 0.5s steps(2) infinite;
+}
+
+/* Jump animation */
+.jump .character-sprite {
+    background-image: url('../assets/jmp1.png');
+    animation: jump 0.3s steps(3) forwards;
+}
+
+/* Move left animation */
+.move-left .character-sprite {
+    background-image: url('../assets/move-left1.png');
+    animation: move-left 0.4s steps(4) infinite;
+}
+
+/* Move right animation */
+.move-right .character-sprite {
+    background-image: url('../assets/move-right1.png');
+    animation: move-right 0.4s steps(4) infinite;
+}
+
+/* Facing direction */
+.facing-left {
+    transform: scaleX(-1);
+}
+
+@keyframes idle {
+    0% {
+        background-image: url('../assets/character-idle.png');
+    }
+    50% {
+        background-image: url('../assets/character-idle-2.png');
+    }
+}
+
+@keyframes jump {
+    0% {
+        background-image: url('../assets/jmp1.png');
+    }
+    33% {
+        background-image: url('../assets/jmp2.png');
+    }
+    66% {
+        background-image: url('../assets/jmp3.png');
+    }
+}
+
+@keyframes move-left {
+    0% {
+        background-image: url('../assets/move-left1.png');
+    }
+    25% {
+        background-image: url('../assets/move-left2.png');
+    }
+    50% {
+        background-image: url('../assets/move-left3.png');
+    }
+    75% {
+        background-image: url('../assets/move-left4.png');
+    }
+}
+
+@keyframes move-right {
+    0% {
+        background-image: url('../assets/move-right1.png');
+    }
+    25% {
+        background-image: url('../assets/move-right2.png');
+    }
+    50% {
+        background-image: url('../assets/move-right3.png');
+    }
+    75% {
+        background-image: url('../assets/move-right4.png');
+    }
+}
+
+/* Apply animations to character based on state */
+.pixel-art-character.idle {
+    animation: idle-animation 1s infinite ease-in-out;
+}
+
+.pixel-art-character.jump {
+    animation: jump-animation 1s forwards ease-in-out;
+}
+
+/* Add hover effect for interactive feel */
+.pixel-art-character:hover {
+    cursor: pointer;
+    transform: scale(1.5);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .character-sprite {
+        width: 96px;
+        height: 96px;
+    }
+    
+    .pixel-art-character {
+        width: 96px;
+        height: 96px;
+    }
+}
