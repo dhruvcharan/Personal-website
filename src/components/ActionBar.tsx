@@ -1,8 +1,8 @@
-import React from 'react';
-import '../styles/ActionBar.css';
-import githubIcon from '../assets/github.png';
-import linkedinIcon from '../assets/linkedin.png';
-import blogIcon from '../assets/blog.png';
+import React from "react";
+import "../styles/ActionBar.css";
+import githubIcon from "../assets/github.png";
+import linkedinIcon from "../assets/linkedin.png";
+import blogIcon from "../assets/blog.png";
 
 interface ActionBarProps {
   onButtonClick: (path: string, buttonElement: HTMLDivElement) => void;
@@ -10,9 +10,9 @@ interface ActionBarProps {
 
 const ActionBar: React.FC<ActionBarProps> = ({ onButtonClick }) => {
   const actions = [
-    { label: 'Blog', path: '/about', icon: blogIcon },
-    { label: 'GitHub', path: '/projects', icon: githubIcon },
-    { label: 'LinkedIn', path: '/contact', icon: linkedinIcon }
+    { label: "Blog", path: "/about", icon: blogIcon },
+    { label: "GitHub", path: "/projects", icon: githubIcon },
+    { label: "LinkedIn", path: "/contact", icon: linkedinIcon },
   ];
 
   return (
@@ -24,9 +24,9 @@ const ActionBar: React.FC<ActionBarProps> = ({ onButtonClick }) => {
           data-path={action.path}
           onClick={(e) => onButtonClick(action.path, e.currentTarget)}
           style={{
-            position: 'absolute',
+            position: "absolute",
             left: `${(index + 1) * 25}%`,
-            transform: 'translateX(-50%)'
+            transform: "translateX(-50%)",
           }}
         >
           <img src={action.icon} alt={action.label} className="action-icon" />
@@ -38,3 +38,4 @@ const ActionBar: React.FC<ActionBarProps> = ({ onButtonClick }) => {
 };
 
 export default ActionBar;
+
