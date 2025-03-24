@@ -25,13 +25,15 @@ interface PixelArtCharacterProps {
   selectedLink: string | null;
   position: Position;
   onJump?: () => void;
+  onPositionUpdate?: (position: Position) => void; // New prop
 }
 
 const JUMP_BUFFER = 100;
 const MOVE_SPEED = 2;
 const JUMP_HEIGHT = 80;
 const JUMP_DURATION = 500;
-const BASE_Y_POSITION = window.innerHeight - 130;
+const getBaseYPosition = () => window.innerHeight - 130;
+const BASE_Y_POSITION = getBaseYPosition();
 
 // Easing functions
 const easeInOutQuad = (t: number): number => {
@@ -50,9 +52,11 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
   selectedLink,
   position,
   onJump,
+  onPositionUpdate,
 }) => {
+  
   const [currentPosition, setCurrentPosition] = useState<Position>({
-    x: window.innerWidth - 1300,
+    x: window.innerWidth * 0.2, 
     y: BASE_Y_POSITION,
   });
   const [animation, setAnimation] = useState<
@@ -90,7 +94,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
   };
 
   const startMovement = () => {
-    // Cancel any existing movement animation
+    
     if (movementFrameRef.current !== null) {
       cancelAnimationFrame(movementFrameRef.current);
       movementFrameRef.current = null;
@@ -213,7 +217,6 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
 
         if (distance < JUMP_BUFFER) {
           onJump();
-          // Complete the jump immediately
           completeJump();
           return;
         }
@@ -322,18 +325,19 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
     };
   }, [selectedLink, position]);
 
-  // Reset position when window is resized
+  
   useEffect(() => {
     const handleResize = () => {
       const newBaseY = window.innerHeight - 130;
+      const newBaseX = window.innerWidth * 0.2; 
 
       setCurrentPosition((prev) => {
-        const shouldUpdateY =
-          Math.abs(prev.y - initialYPositionRef.current) < 2;
-        return {
-          ...prev,
+        const shouldUpdateY = Math.abs(prev.y - initialYPositionRef.current) < 2;
+        
+        return clampPosition({
+          x: newBaseX, 
           y: shouldUpdateY ? newBaseY : prev.y,
-        };
+        });
       });
 
       initialYPositionRef.current = newBaseY;
@@ -356,6 +360,12 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (onPositionUpdate) {
+      onPositionUpdate(currentPosition);
+    }
+  }, [currentPosition, onPositionUpdate]);
 
   return (
     <div

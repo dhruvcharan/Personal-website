@@ -6,11 +6,23 @@
     height: 100vh;
     overflow: hidden;
     margin: 0;
-    background-image: url('../assets/game-background.png');
+    background-image: url('../assets/image_fx_\ \(3\).jpg');
     background-repeat: no-repeat;
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
+    cursor: url('../assets/wand.png'), auto;
+}
+
+/* Apply custom cursor to all interactive elements within game environment */
+.game-environment a,
+.game-environment button,
+.game-environment input[type="button"],
+.game-environment input[type="submit"],
+.game-environment .action-bar-container *,
+.game-environment [role="button"],
+.game-environment [tabindex="0"] {
+    cursor: url('../assets/wand.png'), auto !important;
 }
 
 .game-stage {
@@ -28,4 +40,18 @@
     to {
         background-position: -1920px 0;
     }
+}
+
+.action-bar-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 10px 0;
+    border-top: 3px solid #ff9900; /* Visible border on top */
+    background-color: rgba(0, 0, 0, 0.7);
+    box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
 }

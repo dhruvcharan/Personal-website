@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import PixelArtCharacter from "./PixelArtCharacter";
 import ActionBar from "./ActionBar";
 import InteractiveSprite from "./InteractiveSprite";
 import "../styles/GameEnvironment.css";
 
-// Import the interaction sprites for github (repeat similar imports for linkedin and blog)
+//interaction sprites
 import githubSprite1 from "../assets/interactions/github-interaction.png";
 import githubSprite2 from "../assets/interactions/github-interaction1.png";
 import githubSprite3 from "../assets/interactions/github-interaction2.png";
@@ -26,118 +26,106 @@ interface InteractiveObject {
   spritePaths: string[];
 }
 
+interface Position {
+  x: number;
+  y: number;
+}
+
 const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
-  const [selectedLink, setSelectedLink] = useState<string | null>(null);
-  const [buttonPosition, setButtonPosition] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
-  const [activeButton, setActiveButton] = useState<HTMLDivElement | null>(null);
-  const [interactiveObjects, setInteractiveObjects] = useState<InteractiveObject[]>([]);
   const [showCharacter, setShowCharacter] = useState(true);
   const [isInteracting, setIsInteracting] = useState(false);
-
-  // Define sprite collections
+  const [interactiveObjects, setInteractiveObjects] = useState<InteractiveObject[]>([]);
+  const [activeButton, setActiveButton] = useState<HTMLDivElement | null>(null);
+  const [characterPosition, setCharacterPosition] = useState<Position>({
+    x: window.innerWidth * 0.2,
+    y: window.innerHeight - 130
+  });
+  
+  // Ref to keep track of character position
+  const characterPositionRef = useRef<Position>(characterPosition);
+  
+ 
   const spriteCollections = {
     github: [githubSprite1, githubSprite2, githubSprite3],
     linkedin: [linkedinSprite1, linkedinSprite2, linkedinSprite3],
     blog: [blogSprite1, blogSprite2, blogSprite3]
   };
 
+  
+  const updateCharacterPosition = (position: Position) => {
+    setCharacterPosition(position);
+    characterPositionRef.current = position; // Update the ref with the latest position
+  };
+  
   const handleButtonClick = (path: string, buttonElement: HTMLDivElement) => {
-    // Only allow button clicks if not currently in an interaction
+    
     if (isInteracting) return;
     
     console.log("Button clicked:", path);
-    const rect = buttonElement.getBoundingClientRect();
-    setButtonPosition({
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2,
-    });
     setActiveButton(buttonElement);
-    setSelectedLink(path);
 
-    // Create interactive object based on path
+    
+    buttonElement.classList.add("deformed");
+    setTimeout(() => {
+      buttonElement.classList.remove("deformed");
+    }, 300);
+
+    
     const type = path === '/projects' ? 'github' : 
                  path === '/contact' ? 'linkedin' : 'blog';
     
-    // Get the appropriate sprite collection based on type
+    
     const spritePaths = spriteCollections[type];
 
-    // Clear any existing interactive objects first
+    
+    setShowCharacter(false);
+    setIsInteracting(true);
+    
+    
+    console.log("Character position for interaction:", characterPositionRef.current);
+    
     setInteractiveObjects([{
       type,
       position: {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2
+        x: characterPositionRef.current.x,
+        y: characterPositionRef.current.y
       },
-      isInteracting: false,
+      isInteracting: true,
       spritePaths
     }]);
-  };
-
-  const handleCharacterJump = () => {
-    console.log("Character jumped near button");
-    if (activeButton && !isInteracting) {
-      activeButton.classList.add("deformed");
-
-      setTimeout(() => {
-        activeButton.classList.remove("deformed");
-      }, 300);
-
-      const path = activeButton.getAttribute("data-path");
-      console.log("Active button path:", path);
-      if (path) {
-        // Set interaction state to true to prevent multiple interactions
-        setIsInteracting(true);
-        
-        // Hide the character when interaction starts
-        setShowCharacter(false);
-        
-        // Start interaction with the corresponding object
-        setInteractiveObjects(prev => prev.map(obj => ({
-          ...obj,
-          isInteracting: true
-        })));
-      }
-    }
   };
 
   const handleInteractionComplete = () => {
     console.log("Interaction complete");
     
-    // Navigate to the appropriate page after a short delay
+    
     const path = activeButton?.getAttribute("data-path");
     if (path) {
       setTimeout(() => {
-        // Clean up all state before navigating
         setInteractiveObjects([]);
         setIsInteracting(false);
         setShowCharacter(true);
         onNavigate(path);
-        setSelectedLink(null);
-        setButtonPosition(null);
         setActiveButton(null);
-      }, 500);
+      }, 10);
     }
   };
 
   return (
     <div className="game-environment">
-      {/* Only render character if showCharacter is true AND not in interaction mode */}
+      {}
       {showCharacter && !isInteracting && (
         <div className="character-container">
           <PixelArtCharacter
-            selectedLink={selectedLink}
-            position={buttonPosition || { x: 50, y: 0 }}
-            onJump={handleCharacterJump}
-            interactiveObjects={[]} // We're now handling the interactive objects here, not in PixelArtCharacter
-            onInteractionComplete={handleInteractionComplete}
+            selectedLink={null}
+            position={characterPosition} 
+            onJump={() => {}}
+            onPositionUpdate={updateCharacterPosition}
           />
         </div>
       )}
       
-      {/* Render interactive sprites at the game environment level */}
+      {/* Render interactive sprites */}
       {interactiveObjects.map((obj, index) => (
         <InteractiveSprite
           key={`${obj.type}-${index}`}
@@ -149,7 +137,9 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         />
       ))}
       
-      <ActionBar onButtonClick={handleButtonClick} />
+      <div className="action-bar-container">
+        <ActionBar onButtonClick={handleButtonClick} />
+      </div>
     </div>
   );
 };

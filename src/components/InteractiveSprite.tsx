@@ -20,7 +20,7 @@ const InteractiveSprite: React.FC<InteractiveSpriteProps> = ({
   const [isAnimating, setIsAnimating] = useState(false);
   const animationRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Start animation when isInteracting becomes true
+ 
   useEffect(() => {
     if (isInteracting && !isAnimating) {
       setIsAnimating(true);
@@ -36,7 +36,7 @@ const InteractiveSprite: React.FC<InteractiveSpriteProps> = ({
   }, [isInteracting]);
 
   const startAnimation = () => {
-    // Clear any existing animation
+    
     if (animationRef.current) {
       clearTimeout(animationRef.current);
     }
@@ -47,23 +47,21 @@ const InteractiveSprite: React.FC<InteractiveSpriteProps> = ({
       setCurrentFrameIndex(frame);
       frame++;
       
-      // If we've shown all frames, complete the interaction
       if (frame >= spritePaths.length) {
         setIsAnimating(false);
         onInteractionComplete();
         return;
       }
       
-      // Continue animation with next frame
-      animationRef.current = setTimeout(animate, 300); // 300ms per frame
+      
+      animationRef.current = setTimeout(animate, 200); // 200ms per frame
     };
     
-    // Start the animation sequence
-    animationRef.current = setTimeout(animate, 300);
+    animationRef.current = setTimeout(animate, 200);
   };
 
   if (!isInteracting && !isAnimating) {
-    return null; // Don't render if not in interaction mode
+    return null; 
   }
 
   return (
@@ -71,8 +69,8 @@ const InteractiveSprite: React.FC<InteractiveSpriteProps> = ({
       className={`interactive-sprite ${type}-sprite ${isAnimating ? 'animating' : ''}`}
       style={{
         position: 'absolute',
-        left: `${position.x - 64}px`, // Center the sprite (assuming 128px width)
-        top: `${position.y - 64}px`,  // Center the sprite (assuming 128px height)
+        left: `${position.x - 64}px`, 
+        top: `${position.y - 64}px`,  
         backgroundImage: `url(${spritePaths[currentFrameIndex]})`,
         width: '128px',
         height: '128px',

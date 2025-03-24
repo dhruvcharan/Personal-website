@@ -1,7 +1,7 @@
 .interactive-sprite {
   position: absolute;
-  width: 100px; /* Adjust based on your sprite size */
-  height: 100px; /* Adjust based on your sprite size */
+  width: 128px; /* Adjust based on your sprite size */
+  height: 128px; /* Adjust based on your sprite size */
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
