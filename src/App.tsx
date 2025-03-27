@@ -17,8 +17,8 @@ function App() {
     setTimeout(() => {
       switch(path) {
         case '/about':
-          // window.open('https://dhruv248.substack.com/', '_blank');
-          setCurrentPage('blogList');
+          window.open('https://dhruv248.substack.com/', '_blank');
+          // setCurrentPage('blogList');
           break;
         case '/projects':
           window.open('https://github.com/dhruvcharan', '_blank');
