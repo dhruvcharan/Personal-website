@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import '../styles/InteractiveSprite.css';
 
 interface InteractiveSpriteProps {
-  type: 'github' | 'linkedin' | 'blog';
+  type: 'github' | 'linkedin' | 'blog' | 'now' | 'mail' | 'unknown';
   position: { x: number; y: number };
   isInteracting: boolean;
   spritePaths: string[];
@@ -54,10 +54,10 @@ const InteractiveSprite: React.FC<InteractiveSpriteProps> = ({
       }
       
       
-      animationRef.current = setTimeout(animate, 200); // 200ms per frame
+      animationRef.current = setTimeout(animate, 300); // 200ms per frame
     };
     
-    animationRef.current = setTimeout(animate, 200);
+    animationRef.current = setTimeout(animate, 300);
   };
 
   if (!isInteracting && !isAnimating) {
@@ -66,17 +66,18 @@ const InteractiveSprite: React.FC<InteractiveSpriteProps> = ({
 
   return (
     <div
-      className={`interactive-sprite ${type}-sprite ${isAnimating ? 'animating' : ''}`}
+      className={`interactive-sprite ${type} ${isAnimating ? 'animating' : ''}`}
       style={{
         position: 'absolute',
-        left: `${position.x - 64}px`, 
-        top: `${position.y - 64}px`,  
+        left: `${position.x }px`,
+        top: `${position.y }px`,
         backgroundImage: `url(${spritePaths[currentFrameIndex]})`,
-        width: '128px',
-        height: '128px',
+        width: '64px',
+        height: '64px',
         backgroundSize: 'contain',
         backgroundRepeat: 'no-repeat',
         zIndex: 1000
+        
       }}
     />
   );

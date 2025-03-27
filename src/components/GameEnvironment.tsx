@@ -14,13 +14,20 @@ import linkedinSprite3 from "../assets/interactions/linkedin-interaction2.png";
 import blogSprite1 from "../assets/interactions/blog-interaction.png";
 import blogSprite2 from "../assets/interactions/blog-interaction1.png";
 import blogSprite3 from "../assets/interactions/blog-interaction2.png";
+import nowSprite1 from "../assets/interactions/now-interaction.png";
+import nowSprite2 from "../assets/interactions/now-interaction1.png";
+import nowSprite3 from "../assets/interactions/now-interaction2.png";
+import nowSprite4 from "../assets/interactions/now-interaction3.png";
+import mailSprite1 from "../assets/interactions/mail-interaction.png";
+import mailSprite2 from "../assets/interactions/mail-interaction1.png";
+import mailSprite3 from "../assets/interactions/mail-interaction2.png";
 
 interface GameEnvironmentProps {
   onNavigate: (path: string) => void;
 }
 
 interface InteractiveObject {
-  type: 'github' | 'linkedin' | 'blog';
+  type: 'github' | 'linkedin' | 'blog' | 'now' | 'mail' | 'unknown';
   position: { x: number; y: number };
   isInteracting: boolean;
   spritePaths: string[];
@@ -48,7 +55,10 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const spriteCollections = {
     github: [githubSprite1, githubSprite2, githubSprite3],
     linkedin: [linkedinSprite1, linkedinSprite2, linkedinSprite3],
-    blog: [blogSprite1, blogSprite2, blogSprite3]
+    blog: [blogSprite1, blogSprite2, blogSprite3],
+    now: [nowSprite1, nowSprite2, nowSprite3,nowSprite4],
+    mail: [mailSprite1, mailSprite2, mailSprite3],
+    unknown: []
   };
 
   
@@ -70,9 +80,22 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       buttonElement.classList.remove("deformed");
     }, 300);
 
-    
-    const type = path === '/projects' ? 'github' : 
-                 path === '/contact' ? 'linkedin' : 'blog';
+    let type: InteractiveObject['type'] = 'unknown';
+    if (path === '/projects') {
+      type = 'github';
+    } else if (path === '/about') {
+      type = 'blog';
+    }
+    else if (path === '/linkedin') {
+      type = 'linkedin';
+    }
+    else if (path === '/now') {
+      type = 'now';
+    }
+    else if (path === '/mail') {
+      type = 'mail';
+    }
+
     
     
     const spritePaths = spriteCollections[type];
@@ -125,7 +148,6 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         </div>
       )}
       
-      {/* Render interactive sprites */}
       {interactiveObjects.map((obj, index) => (
         <InteractiveSprite
           key={`${obj.type}-${index}`}

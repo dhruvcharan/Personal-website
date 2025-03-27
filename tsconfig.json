@@ -21,7 +21,10 @@
     "noEmit": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.d.ts", "public/posts",
   ],
   "exclude": [
     "node_modules",

@@ -1,0 +1,222 @@
+
+.now-page-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url('../assets/image_fx_\ \(1\).jpg');
+    z-index: 1500;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 20px;
+    overflow-y: auto;
+    backdrop-filter: none; /* Removed */
+  }
+  
+  .now-page-content {
+    background-image: url('../assets/parchment_new.png');
+    padding: 30px 40px;
+    max-width: 900px;
+    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    border-radius: 4px;
+    margin: 0 auto;
+    color: rgba(200, 200, 200, 0.03);
+    position: relative; 
+    font-family: 'IM Fell English', serif; 
+    text-shadow:
+     1px  1px 0 rgba(245, 245, 220, 0.22), /* beige */
+    -1px  1px 0 rgba(245, 245, 220, 0.7),
+     1px -1px 0 rgba(245, 245, 220, 0.7),
+    -1px -1px 0 rgba(245, 245, 220, 0.7);
+  }
+
+  
+
+  
+  .page-close-button {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: lightgray;
+    border: 1px solid black;
+    border-radius: 50%;
+    font-family: sans-serif; 
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: black;
+    cursor: pointer;
+    width: 35px;
+    height: 35px;
+    line-height: 35px; 
+    text-align: center;
+    padding: 0;
+    z-index: 10;
+  }
+  .page-close-button:hover {
+     background-color: gray;
+     transform: rotate(90deg);
+  }
+  
+  .now-page-title {
+    font-family: MedievalSharp, cursive;
+    color: #6b3e2e;
+    text-align: center;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    font-size: 1.8rem;
+    text-shadow:
+     1px  1px 0 rgba(245, 245, 220, 0.7), /* beige */
+    -1px  1px 0 rgba(245, 245, 220, 0.7),
+     1px -1px 0 rgba(245, 245, 220, 0.7),
+    -1px -1px 0 rgba(245, 245, 220, 0.7);
+  }
+  
+  .section-divider {
+    border: none;
+    border-top: 1px dashed gray; 
+    margin: 30px auto;
+    width: 80%;
+  }
+  
+  .personal-updates {
+    margin-bottom: 30px;
+    padding: 10px 0;
+  }
+  .personal-updates h2 {
+    font-family: MedievalSharp, cursive;
+    color: #7b4e3e;
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.4rem;
+    border-bottom: 1px solid lightgray; /* Simple underline */
+    padding-bottom: 5px;
+    
+  }
+  .personal-updates p {
+    line-height: 1.6;
+    color: black;
+    margin-bottom: 1em;
+    
+  }
+  
+  .reading-section-title {
+    font-family: MedievalSharp, cursive;
+    color: black;
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+  }
+  
+  .now-page-description {
+    text-align: center;
+    margin-bottom: 30px;
+    font-style: italic;
+    font-size: 0.9rem;
+    color: #333; 
+    font-family: inherit;
+    text-shadow: none;
+  }
+  .now-page-description a {
+      color: #a0522d; 
+      text-decoration: underline;
+  }
+  
+  
+  .book-categories-container { }
+  
+  .book-category {
+    margin-bottom: 30px;
+  }
+  
+  .book-category-title {
+    font-family: MedievalSharp, cursive;
+    color: black;
+    border-bottom: 1px solid gray; /* Simple border */
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+  }
+  
+  .book-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  
+  .book-item {
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+    background-color: rgba(255,250,240,0.3);
+    padding: 10px;
+    border: 1px solid #ccc; 
+  }
+  
+  .book-cover-container {
+    width: 80px;
+    flex-shrink: 0;
+    text-align: center;
+  }
+  
+  .book-cover {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid gray; 
+  }
+  
+  .book-details {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .book-title {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.3;
+    font-family: inherit;
+  }
+  .book-title a {
+    color: #8b4513; 
+    text-decoration: none;
+    font-weight: bold;
+  }
+  .book-title a:hover {
+    text-decoration: underline;
+    color:  #a0522d;
+  }
+  
+  .book-author {
+    font-size: 0.8rem;
+    color: #555; 
+    font-style: italic;
+    margin: 0;
+    font-family: inherit; 
+  }
+  
+  .book-notes {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: #333;
+    margin: 5px 0;
+    flex-grow: 1;
+    font-family: inherit;
+  }
+  
+  .book-rating {
+    font-size: 0.8rem;
+    color: black;
+    font-weight: normal;
+    text-align: left;
+    margin: 5px 0 0 0;
+    letter-spacing: normal;
+    font-family: inherit;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }

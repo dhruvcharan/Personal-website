@@ -1,0 +1,119 @@
+.blog-page-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url('../assets/image_fx_\ \(1\).jpg');
+    z-index: 1500;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 20px;
+    overflow-y: auto;
+    backdrop-filter: none; /* Removed */
+  }
+  
+  .blog-page-content {
+    padding: 30px 40px;
+    max-width: 900px;
+    background-color: grey;
+    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    border-radius: 4px;
+    margin: 0 auto;
+    color: rgba(200, 200, 200, 0.03);
+    position: relative; 
+    font-family: 'IM Fell English', serif; 
+    text-shadow:
+     1px  1px 0 rgba(245, 245, 220, 0.22), /* beige */
+    -1px  1px 0 rgba(245, 245, 220, 0.7),
+     1px -1px 0 rgba(245, 245, 220, 0.7),
+    -1px -1px 0 rgba(245, 245, 220, 0.7);
+  }
+
+  .page-close-button {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: lightgray;
+    border: 1px solid black;
+    border-radius: 50%;
+    font-family: sans-serif; 
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: black;
+    cursor: pointer;
+    width: 35px;
+    height: 35px;
+    line-height: 35px; 
+    text-align: center;
+    padding: 0;
+    z-index: 10;
+  }
+  .page-close-button:hover {
+     background-color: gray;
+     transform: rotate(90deg);
+  }
+
+  .blog-list-title {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    text-align: center;
+    font : 'IM Fell English', serif;
+  }
+
+  .post-items-list {
+   list-style: none;
+   padding: 0%;
+  }
+
+  .post-list-item {
+    border-bottom: 1px dashed #a0522d;
+    padding: 25px 0;
+  }
+
+  .post-list-item:last-child {
+    border-bottom: none;
+  }
+
+  .post-list-title {
+    font-size: 1.8rem;
+    margin-bottom: 10px;
+    font-family: 'IM Fell English', serif;
+  }
+
+  .post-title-button {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    font-weight: bold;
+    cursor: url('../assets/wand.png'), pointer;
+    font-family: inherit;
+    color : saddlebrown
+  }
+
+  .post-title-button:hover {
+    color: #a0522d;
+  }
+
+  .post-list-date {
+    font-size: 0.8rem;
+    color: #5a3c2a;
+  }
+
+  .post-list-excerpt {
+   margin-bottom: 15px;
+   color: #4a2c1a
+  }
+
+  .read-more-button {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: url('../assets/wand.png'), pointer;
+    font-family: inherit;
+    color : saddlebrown
+  }
+
+
+  
+

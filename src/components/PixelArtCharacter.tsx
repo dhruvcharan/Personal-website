@@ -142,7 +142,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
           handleJump();
           break;
       }
-
+      
       if (
         (keyPressedRef.current.left || keyPressedRef.current.right) &&
         movementFrameRef.current === null
@@ -329,19 +329,20 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
   useEffect(() => {
     const handleResize = () => {
       const newBaseY = window.innerHeight - 130;
-      const newBaseX = window.innerWidth * 0.2; 
+      // const newBaseX = window.innerWidth * 0.2; 
 
       setCurrentPosition((prev) => {
         const shouldUpdateY = Math.abs(prev.y - initialYPositionRef.current) < 2;
         
         return clampPosition({
-          x: newBaseX, 
+          x: prev.x, 
           y: shouldUpdateY ? newBaseY : prev.y,
         });
       });
 
       initialYPositionRef.current = newBaseY;
     };
+    console.log("Resize Triggered")
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);

@@ -15,6 +15,9 @@
   width: 128px;
   height: 128px;
   margin-left: -32px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   margin-top: -32px;
 }
 
@@ -23,6 +26,9 @@
   width: 128px;
   height: 128px;
   margin-left: -32px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   margin-top: -32px;
 }
 
@@ -30,6 +36,31 @@
   background-image: url('../assets/interactions/blog-interaction.png');
   width: 128px;
   height: 128px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  margin-left: -32px;
+  margin-top: -32px;
+}
+
+.interactive-sprite.mail {
+  background-image: url('../assets/interactions/mail-interaction.png');
+  width: 128px;
+  height: 128px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  margin-left: -32px;
+  margin-top: -32px;
+}
+
+.interactive-sprite.now {
+  background-image: url('../assets/interactions/now-interaction.png');
+  width: 128px;
+  height: 128px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   margin-left: -32px;
   margin-top: -32px;
 }
