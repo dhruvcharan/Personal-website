@@ -21,47 +21,44 @@ interface Position {
   y: number;
 }
 
+interface RoadBoundaries {
+  left: number;
+  right: number;
+}
+
 interface PixelArtCharacterProps {
   selectedLink: string | null;
   position: Position;
   onJump?: () => void;
-  onPositionUpdate?: (position: Position) => void; // New prop
+  onPositionUpdate?: (position: Position) => void;
+  roadBoundaries?: RoadBoundaries;
 }
 
 const JUMP_BUFFER = 100;
 const MOVE_SPEED = 2;
 const JUMP_HEIGHT = 80;
-const JUMP_DURATION = 500;
-const getBaseYPosition = () => window.innerHeight - 130;
-const BASE_Y_POSITION = getBaseYPosition();
+const JUMP_DURATION = 1050;
+const getBaseYPosition = () => window.innerHeight - 175;
 
 // Easing functions
-const easeInOutQuad = (t: number): number => {
-  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-};
-
-const easeOutQuad = (t: number): number => {
-  return -t * (t - 2);
-};
-
-const easeInQuad = (t: number): number => {
-  return t * t;
-};
+const easeInOutQuad = (t: number): number => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+const easeOutQuad = (t: number): number => -t * (t - 2);
+const easeInQuad = (t: number): number => t * t;
 
 const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
   selectedLink,
   position,
   onJump,
   onPositionUpdate,
+  roadBoundaries = { left: 0, right: window.innerWidth }
 }) => {
+  console.log('Component rendering with props:', { selectedLink, position, roadBoundaries });
   
   const [currentPosition, setCurrentPosition] = useState<Position>({
     x: window.innerWidth * 0.2, 
-    y: BASE_Y_POSITION,
+    y: getBaseYPosition(),
   });
-  const [animation, setAnimation] = useState<
-    "idle" | "jump" | "move-left" | "move-right"
-  >("idle");
+  const [animation, setAnimation] = useState<"idle" | "jump" | "move-left" | "move-right">("idle");
   const [direction, setDirection] = useState<"left" | "right">("right");
   const [isJumping, setIsJumping] = useState(false);
   const characterRef = useRef<HTMLDivElement>(null);
@@ -73,29 +70,40 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
   const movementFrameRef = useRef<number | null>(null);
   const jumpFrameRef = useRef<number | null>(null);
   const autoMoveFrameRef = useRef<number | null>(null);
-  const initialYPositionRef = useRef<number>(BASE_Y_POSITION);
+  const initialYPositionRef = useRef<number>(getBaseYPosition());
+  const lastReportedPosition = useRef<Position>({x: 0, y: 0});
+  
+  const roadBoundariesRef = useRef<RoadBoundaries>(roadBoundaries);
+  
+  useEffect(() => {
+    roadBoundariesRef.current = roadBoundaries;
+  }, [roadBoundaries]);
 
   const getScreenBoundaries = () => {
     if (!characterRef.current)
-      return { minX: 0, maxX: window.innerWidth - 128 };
+      return { minX: roadBoundaries.left, maxX: roadBoundaries.right };
+      
     const characterWidth = characterRef.current.offsetWidth;
     return {
-      minX: 0,
-      maxX: window.innerWidth - characterWidth,
+      minX: roadBoundaries.left,
+      maxX: roadBoundaries.right - characterWidth,
     };
   };
 
   const clampPosition = (pos: Position): Position => {
     const boundaries = getScreenBoundaries();
-    return {
+    const result = {
       x: Math.max(boundaries.minX, Math.min(boundaries.maxX, pos.x)),
-      y: Math.max(0, Math.min(window.innerHeight - 128, pos.y)),
+      y: isJumping ? pos.y : getBaseYPosition(),
     };
+    console.log('Clamping position:', { input: pos, boundaries, result, isJumping });
+    return result;
   };
 
   const startMovement = () => {
-    
+    console.log('Starting movement animation');
     if (movementFrameRef.current !== null) {
+      console.log('Canceling existing movement frame');
       cancelAnimationFrame(movementFrameRef.current);
       movementFrameRef.current = null;
     }
@@ -116,7 +124,9 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
           setAnimation("idle");
         }
 
-        return clampPosition({ ...prev, x: newX });
+        const newPos = clampPosition({ ...prev, x: newX });
+        console.log('Moving character to:', newPos);
+        return newPos;
       });
 
       if (keyPressedRef.current.left || keyPressedRef.current.right) {
@@ -128,7 +138,10 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
   };
 
   useEffect(() => {
+    console.log('Setting up keyboard handlers. isJumping:', isJumping);
+    
     const handleKeyDown = (e: KeyboardEvent) => {
+      console.log('Key down:', e.key, 'isJumping:', isJumping);
       if (isJumping) return;
 
       switch (e.key) {
@@ -147,11 +160,13 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
         (keyPressedRef.current.left || keyPressedRef.current.right) &&
         movementFrameRef.current === null
       ) {
+        console.log('Starting movement from key press');
         startMovement();
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      console.log('Key up:', e.key);
       switch (e.key) {
         case "ArrowLeft":
           keyPressedRef.current.left = false;
@@ -166,6 +181,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
         !keyPressedRef.current.right &&
         movementFrameRef.current !== null
       ) {
+        console.log('Stopping movement animation');
         cancelAnimationFrame(movementFrameRef.current);
         movementFrameRef.current = null;
         setAnimation("idle");
@@ -176,22 +192,27 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
     window.addEventListener("keyup", handleKeyUp);
 
     return () => {
+      console.log('Cleaning up keyboard handlers');
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
   }, [isJumping]);
 
   const handleJump = () => {
+    console.log('Jump requested. Current isJumping:', isJumping);
     if (isJumping) return;
 
+    console.log('Starting jump animation');
     setIsJumping(true);
     setAnimation("jump");
 
     initialYPositionRef.current = currentPosition.y;
+    console.log('Initial Y position for jump:', initialYPositionRef.current);
 
     const startTime = Date.now();
 
     if (jumpFrameRef.current !== null) {
+      console.log('Canceling existing jump frame');
       cancelAnimationFrame(jumpFrameRef.current);
     }
 
@@ -207,72 +228,76 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
       }
 
       const newY = initialYPositionRef.current - jumpOffset;
+      console.log('Jump animation frame:', { progress, jumpOffset, newY });
 
       setCurrentPosition((prev) => ({ ...prev, y: newY }));
 
-      if (onJump) {
-        const dx = position.x - currentPosition.x;
-        const dy = position.y - currentPosition.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance < JUMP_BUFFER) {
-          onJump();
-          completeJump();
-          return;
-        }
-      }
 
       if (progress < 1) {
         jumpFrameRef.current = requestAnimationFrame(jumpAnimate);
       } else {
-        completeJump();
+        console.log('Jump animation complete (duration reached)');
+        completeJump(); 
       }
     };
 
-    const completeJump = () => {
-      if (jumpFrameRef.current !== null) {
-        cancelAnimationFrame(jumpFrameRef.current);
-        jumpFrameRef.current = null;
-      }
-
-      setCurrentPosition((prev) => ({
-        ...prev,
-        y: initialYPositionRef.current,
-      }));
-
-      if (keyPressedRef.current.left) {
-        setAnimation("move-left");
-      } else if (keyPressedRef.current.right) {
-        setAnimation("move-right");
-      } else {
-        setAnimation("idle");
-      }
-
-      setIsJumping(false);
-    };
 
     jumpFrameRef.current = requestAnimationFrame(jumpAnimate);
+  }; 
+
+
+  // No changes needed for completeJump for this specific modification
+  const completeJump = () => {
+    console.log('Completing jump');
+    if (jumpFrameRef.current !== null) {
+      cancelAnimationFrame(jumpFrameRef.current);
+      jumpFrameRef.current = null;
+    }
+
+    const baseYPosition = getBaseYPosition();
+    console.log('Returning to base Y position:', baseYPosition);
+    setCurrentPosition((prev) => ({
+      ...prev,
+      y: baseYPosition,
+    }));
+    initialYPositionRef.current = baseYPosition; 
+
+    if (keyPressedRef.current.left) {
+      setAnimation("move-left");
+    } else if (keyPressedRef.current.right) {
+      setAnimation("move-right");
+    } else {
+      setAnimation("idle");
+    }
+
+    setIsJumping(false); // Allow jumping again
   };
 
   useEffect(() => {
+    console.log('selectedLink or position changed:', { selectedLink, position });
+    
     if (autoMoveFrameRef.current !== null) {
+      console.log('Canceling existing auto-move frame');
       cancelAnimationFrame(autoMoveFrameRef.current);
       autoMoveFrameRef.current = null;
     }
 
     if (!selectedLink) {
+      console.log('No selected link, skipping auto-movement');
       return;
     }
 
     console.log("Moving to selected link:", selectedLink);
 
     if (movementFrameRef.current !== null) {
+      console.log('Canceling existing movement frame before auto-move');
       cancelAnimationFrame(movementFrameRef.current);
       movementFrameRef.current = null;
     }
 
     // Force stop any jumping
     if (jumpFrameRef.current !== null) {
+      console.log('Canceling existing jump before auto-move');
       cancelAnimationFrame(jumpFrameRef.current);
       jumpFrameRef.current = null;
       setIsJumping(false);
@@ -281,6 +306,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
     const moveToPosition = () => {
       const dx = position.x - currentPosition.x;
       const newDirection = dx > 0 ? "right" : "left";
+      console.log('Auto-move parameters:', { dx, newDirection, targetPosition: position });
       setDirection(newDirection);
 
       const moveAnimation: "idle" | "move-left" | "move-right" =
@@ -289,6 +315,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
 
       const distance = Math.abs(dx);
       const duration = distance * 5;
+      console.log('Auto-move animation setup:', { distance, duration });
 
       const startTime = Date.now();
       const startX = currentPosition.x;
@@ -299,11 +326,18 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
 
         const easedProgress = easeInOutQuad(progress);
         const newX = startX + dx * easedProgress;
-        setCurrentPosition((prev) => clampPosition({ ...prev, x: newX }));
+        console.log('Auto-move animation frame:', { elapsed, progress, easedProgress, newX });
+        
+        setCurrentPosition((prev) => {
+          const newPos = clampPosition({ ...prev, x: newX });
+          console.log('Setting new position from auto-move:', newPos);
+          return newPos;
+        });
 
         if (progress < 1) {
           autoMoveFrameRef.current = requestAnimationFrame(animate);
         } else {
+          console.log('Auto-move complete, preparing for jump');
           setAnimation("idle");
           // Store current Y position before jumping
           initialYPositionRef.current = currentPosition.y;
@@ -318,6 +352,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
     moveToPosition();
 
     return () => {
+      console.log('Cleaning up auto-move effect');
       if (autoMoveFrameRef.current !== null) {
         cancelAnimationFrame(autoMoveFrameRef.current);
         autoMoveFrameRef.current = null;
@@ -325,45 +360,54 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
     };
   }, [selectedLink, position]);
 
-  
   useEffect(() => {
+    console.log('Setting up resize handler');
+    
     const handleResize = () => {
-      const newBaseY = window.innerHeight - 130;
-      // const newBaseX = window.innerWidth * 0.2; 
-
-      setCurrentPosition((prev) => {
-        const shouldUpdateY = Math.abs(prev.y - initialYPositionRef.current) < 2;
+      const newBaseY = getBaseYPosition();
+      console.log('Window resized, new base Y:', newBaseY);
+      
+      if (!isJumping) {
+        console.log('Not jumping, adjusting position on resize');
+        const newPos = {
+          x: currentPosition.x, 
+          y: newBaseY
+        };
         
-        return clampPosition({
-          x: prev.x, 
-          y: shouldUpdateY ? newBaseY : prev.y,
-        });
-      });
-
-      initialYPositionRef.current = newBaseY;
+        const clampedPos = clampPosition(newPos);
+        console.log('New position after resize:', { newPos, clampedPos });
+        
+        if (clampedPos.y !== currentPosition.y || 
+            clampedPos.x !== currentPosition.x) {
+          console.log('Position changed after resize, updating state');
+          setCurrentPosition(clampedPos);
+          initialYPositionRef.current = newBaseY;
+        }
+      }
     };
-    console.log("Resize Triggered")
 
     window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  useEffect(() => {
     return () => {
-      if (movementFrameRef.current !== null) {
-        cancelAnimationFrame(movementFrameRef.current);
-      }
-      if (jumpFrameRef.current !== null) {
-        cancelAnimationFrame(jumpFrameRef.current);
-      }
-      if (autoMoveFrameRef.current !== null) {
-        cancelAnimationFrame(autoMoveFrameRef.current);
-      }
-    };
-  }, []);
+      console.log('Cleaning up resize handler');
+      window.removeEventListener("resize", handleResize);
+    }
+  }, [isJumping, currentPosition.x, currentPosition.y]);
 
   useEffect(() => {
-    if (onPositionUpdate) {
+    console.log('Position update check:', { 
+      current: currentPosition,
+      last: lastReportedPosition.current,
+      diff: {
+        x: Math.abs(lastReportedPosition.current.x - currentPosition.x),
+        y: Math.abs(lastReportedPosition.current.y - currentPosition.y)
+      }
+    });
+    
+    if (onPositionUpdate && 
+        (Math.abs(lastReportedPosition.current.x - currentPosition.x) > 1 || 
+         Math.abs(lastReportedPosition.current.y - currentPosition.y) > 1)) {
+      console.log('Reporting position update to parent');
+      lastReportedPosition.current = {...currentPosition};
       onPositionUpdate(currentPosition);
     }
   }, [currentPosition, onPositionUpdate]);
@@ -382,4 +426,3 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
 };
 
 export default PixelArtCharacter;
-

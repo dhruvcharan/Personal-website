@@ -38,6 +38,22 @@ interface Position {
   y: number;
 }
 
+
+const getRoadBoundaries = () => {
+  const windowWidth = window.innerWidth;
+  
+
+
+  const leftBoundaryPercent = 0.05;
+
+  const rightBoundaryPercent = 0.95;
+  
+  return {
+    left: windowWidth * leftBoundaryPercent,
+    right: windowWidth * rightBoundaryPercent
+  };
+};
+
 const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const [showCharacter, setShowCharacter] = useState(true);
   const [isInteracting, setIsInteracting] = useState(false);
@@ -51,68 +67,86 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   // Ref to keep track of character position
   const characterPositionRef = useRef<Position>(characterPosition);
   
+
+  const roadBoundariesRef = useRef(getRoadBoundaries());
  
   const spriteCollections = {
     github: [githubSprite1, githubSprite2, githubSprite3],
     linkedin: [linkedinSprite1, linkedinSprite2, linkedinSprite3],
     blog: [blogSprite1, blogSprite2, blogSprite3],
-    now: [nowSprite1, nowSprite2, nowSprite3,nowSprite4],
+    now: [nowSprite1, nowSprite2, nowSprite3, nowSprite4],
     mail: [mailSprite1, mailSprite2, mailSprite3],
     unknown: []
   };
 
+
+  useEffect(() => {
+    const handleResize = () => {
+      roadBoundariesRef.current = getRoadBoundaries();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   const updateCharacterPosition = (position: Position) => {
-    setCharacterPosition(position);
-    characterPositionRef.current = position; // Update the ref with the latest position
+
+    const boundaries = roadBoundariesRef.current;
+    const constrainedX = Math.max(
+      boundaries.left, 
+      Math.min(boundaries.right, position.x)
+    );
+    
+    const constrainedPosition = {
+      x: constrainedX,
+      y: position.y
+    };
+    
+    setCharacterPosition(constrainedPosition);
+    characterPositionRef.current = constrainedPosition;
   };
   
   const handleButtonClick = (path: string, buttonElement: HTMLDivElement) => {
-    
     if (isInteracting) return;
     
     console.log("Button clicked:", path);
     setActiveButton(buttonElement);
-
     
     buttonElement.classList.add("deformed");
     setTimeout(() => {
       buttonElement.classList.remove("deformed");
     }, 300);
-
+    
     let type: InteractiveObject['type'] = 'unknown';
     if (path === '/projects') {
       type = 'github';
     } else if (path === '/about') {
       type = 'blog';
-    }
-    else if (path === '/linkedin') {
+    } else if (path === '/linkedin') {
       type = 'linkedin';
-    }
-    else if (path === '/now') {
+    } else if (path === '/now') {
       type = 'now';
-    }
-    else if (path === '/mail') {
+    } else if (path === '/mail') {
       type = 'mail';
     }
-
-    
     
     const spritePaths = spriteCollections[type];
 
+    const currentCharacterPos = characterPositionRef.current;
+    console.log('Character position used for sprite:', currentCharacterPos); 
+
     
+    const currentPos = {
+      x: currentCharacterPos.x,
+      y: currentCharacterPos.y - 0 
+    };
+   console.log("Current position for sprite:", currentPos);  
     setShowCharacter(false);
     setIsInteracting(true);
     
-    
-    console.log("Character position for interaction:", characterPositionRef.current);
-    
     setInteractiveObjects([{
       type,
-      position: {
-        x: characterPositionRef.current.x,
-        y: characterPositionRef.current.y
-      },
+      position: currentPos,
       isInteracting: true,
       spritePaths
     }]);
@@ -120,7 +154,6 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
 
   const handleInteractionComplete = () => {
     console.log("Interaction complete");
-    
     
     const path = activeButton?.getAttribute("data-path");
     if (path) {
@@ -136,7 +169,6 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
 
   return (
     <div className="game-environment">
-      {}
       {showCharacter && !isInteracting && (
         <div className="character-container">
           <PixelArtCharacter
@@ -144,6 +176,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
             position={characterPosition} 
             onJump={() => {}}
             onPositionUpdate={updateCharacterPosition}
+            roadBoundaries={roadBoundariesRef.current}
           />
         </div>
       )}

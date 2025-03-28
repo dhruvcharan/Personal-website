@@ -1,7 +1,7 @@
 .interactive-sprite {
   position: absolute;
-  width: 128px; /* Adjust based on your sprite size */
-  height: 128px; /* Adjust based on your sprite size */
+  
+  
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -12,66 +12,31 @@
 
 .interactive-sprite.github {
   background-image: url('../assets/interactions/github-interaction.png');
-  width: 128px;
-  height: 128px;
-  margin-left: -32px;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  margin-top: -32px;
 }
 
 .interactive-sprite.linkedin {
   background-image: url('../assets/interactions/linkedin-interaction.png');
-  width: 128px;
-  height: 128px;
-  margin-left: -32px;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  margin-top: -32px;
 }
 
 .interactive-sprite.blog {
   background-image: url('../assets/interactions/blog-interaction.png');
-  width: 128px;
-  height: 128px;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  margin-left: -32px;
-  margin-top: -32px;
 }
 
 .interactive-sprite.mail {
   background-image: url('../assets/interactions/mail-interaction.png');
-  width: 128px;
-  height: 128px;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  margin-left: -32px;
-  margin-top: -32px;
 }
 
 .interactive-sprite.now {
   background-image: url('../assets/interactions/now-interaction.png');
-  width: 128px;
-  height: 128px;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  margin-left: -32px;
-  margin-top: -32px;
 }
 
-.interactive-sprite.interacting {
-  transform: scale(1.2);
-  z-index: 1000;
+.interactive-sprite.animating {
+  /* transform: scale(1.2); */
+  /* z-index: 1000; */
   animation: interactionPulse 0.5s ease infinite;
 }
 
-@keyframes interactionPulse {
+/* @keyframes interactionPulse {
   0% {
     transform: scale(1);
   }
@@ -81,4 +46,4 @@
   100% {
     transform: scale(1);
   }
-}
+} */
