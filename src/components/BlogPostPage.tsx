@@ -21,12 +21,16 @@ const BlogPostPage: React.FC<BlogPostPageProps> = ({ slug, onClose }) => {
 
     const postMeta = getPostMetadataBySlug(slug);
     setMetadata(postMeta || null);
+    
 
     if (postMeta) {
-      fetch(postMeta.markdownPath) 
+
+      const fetchPath = `${process.env.PUBLIC_URL}/${postMeta.markdownPath}`;
+      console.log("Fetching markdown from:", fetchPath);
+      fetch(fetchPath) 
         .then(response => {
           if (!response.ok) {
-            throw new Error(`Failed to fetch ${postMeta.markdownPath}: ${response.statusText}`);
+            throw new Error(`Failed to fetch ${fetchPath}: ${response.statusText}`);
           }
           return response.text();
         })

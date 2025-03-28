@@ -12,7 +12,7 @@ export const postsMetadata: PostMetadata[] = [
       date: '2025-02-19',
       slug: 'chatgpt',
       excerpt: ' A look at the potential n>1th order implications of the pervasive use of LLMs as a proxy for the human brain particularly in Software Development',
-      markdownPath: '/posts/blog-1.md' 
+      markdownPath: 'posts/blog-1.md' 
     },
 ];
 

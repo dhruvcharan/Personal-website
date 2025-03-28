@@ -8,8 +8,6 @@ interface NowPageProps {
 }
 
 const NowPage   : React.FC<NowPageProps> = ({ onBackClick, onClose }) => {
-    console.log("Now Rendering");
-    console.log("Data:", currentlyReading);
     return (
         
         <div className="now-page-overlay" onClick={onClose}>
@@ -28,10 +26,16 @@ const NowPage   : React.FC<NowPageProps> = ({ onBackClick, onClose }) => {
             <section className="personal-updates">
               <h2>Right Now...</h2>
               <p>
-               
+                Inspired by the <a href="https://nownownow.com/about" target="_blank" rel="noopener noreferrer">/now page movement</a>.
               </p>
               <p>
-               
+              I am Dhruv a 25yo about to graduate CS Grad Student at Stony Brook University. I spent a few years working as a Software Development Engineer at Amazon,
+              followed by a role as a Product Engineer at Kombai.io.
+              Open to Full Time Opportunities. My primary areas of competence and interests lie in the broad field of MLOps and Devops. 
+              </p>
+              <p>
+              Currently working on a couple of side Projects and looking to learn more about building resilient intelligent systems that are maximally user-friendly.
+              Striving to build a knowledge base on a foundation of continuous learning and growth and a deep appreciation for the things that make the world tick.
               </p>
             </section>
     
@@ -39,9 +43,8 @@ const NowPage   : React.FC<NowPageProps> = ({ onBackClick, onClose }) => {
     
             {}
             <h2 className="reading-section-title">Currently Reading</h2>
-            <p className="now-page-description"> {/* Intro text moved closer to the relevant section */}
-              A peek into the pages currently occupying my attention.
-              Inspired by the <a href="https://nownownow.com/about" target="_blank" rel="noopener noreferrer">/now page movement</a>.
+            <p className="now-page-description"> {" "}
+              A peek into the books currently occupying my attention.
             </p>
     
             {}
@@ -89,8 +92,8 @@ const NowPage   : React.FC<NowPageProps> = ({ onBackClick, onClose }) => {
                   </section>
                 );
               })}
-            </div> {}
-          </div> {}
+            </div> 
+          </div> 
         </div> 
       );
     };
