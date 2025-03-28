@@ -1,15 +1,16 @@
 {
   "files": {
-    "main.css": "/Personal-website/static/css/main.390bbed4.css",
-    "main.js": "/Personal-website/static/js/main.93e5f918.js",
+    "main.css": "/Personal-website/static/css/main.6066a2f4.css",
+    "main.js": "/Personal-website/static/js/main.8948a999.js",
     "static/media/image_fx_ (3).jpg": "/Personal-website/static/media/image_fx_ (3).b61801ceb12de30c40cb.jpg",
     "static/media/image_fx_ (1).jpg": "/Personal-website/static/media/image_fx_ (1).5929b8b9d37abcbf4d22.jpg",
-    "static/media/parchment_new.png": "/Personal-website/static/media/parchment_new.98bb6b79a627d7c79765.png",
+    "static/media/parchment.jpeg": "/Personal-website/static/media/parchment.d2ba77ef9544227969dd.jpeg",
     "static/media/mail.png": "/Personal-website/static/media/mail.ebef8ff0fe6c72bb6a0d.png",
     "static/media/linkedin.png": "/Personal-website/static/media/linkedin.5811d40fd97dc30feeb5.png",
     "static/media/blog.png": "/Personal-website/static/media/blog.251cb9aba65063236cea.png",
     "static/media/github.png": "/Personal-website/static/media/github.0b44ff1f8adccbe85a72.png",
     "static/media/now.png": "/Personal-website/static/media/now.7ca38cbff32f8465dd78.png",
+    "static/media/parchment_new.png": "/Personal-website/static/media/parchment_new.6a3990e23060520c4005.png",
     "static/media/mail-interaction1.png": "/Personal-website/static/media/mail-interaction1.b4c3adc6dad4b625614d.png",
     "static/media/now-interaction3.png": "/Personal-website/static/media/now-interaction3.6f1c34dedc3e5d6f82c5.png",
     "static/media/now-interaction1.png": "/Personal-website/static/media/now-interaction1.262c7de361788b99fb9e.png",
@@ -40,11 +41,11 @@
     "static/media/github-interaction.png": "/Personal-website/static/media/github-interaction.85a11c289ec576d13f4f.png",
     "static/media/blog-interaction.png": "/Personal-website/static/media/blog-interaction.c7bfd47d159ece0fba8c.png",
     "index.html": "/Personal-website/index.html",
-    "main.390bbed4.css.map": "/Personal-website/static/css/main.390bbed4.css.map",
-    "main.93e5f918.js.map": "/Personal-website/static/js/main.93e5f918.js.map"
+    "main.6066a2f4.css.map": "/Personal-website/static/css/main.6066a2f4.css.map",
+    "main.8948a999.js.map": "/Personal-website/static/js/main.8948a999.js.map"
   },
   "entrypoints": [
-    "static/css/main.390bbed4.css",
-    "static/js/main.93e5f918.js"
+    "static/css/main.6066a2f4.css",
+    "static/js/main.8948a999.js"
   ]
 }
