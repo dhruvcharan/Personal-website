@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GameEnvironment from './components/GameEnvironment';
 import './App.css';
 import NowPage from './components/NowPage';
@@ -12,7 +12,26 @@ function App() {
   const [selectedPostSlug, setSelectedPostSlug] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
 
-  const openContactModal = () => setShowContactModal(true);
+  useEffect(() => {
+    const handlePopState = () => {
+      console.log('Back button pressed, returning to home');
+      setShowContactModal(false);
+      setCurrentPage('home');
+      setSelectedPostSlug(null);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  const openContactModal = () => {
+    setShowContactModal(true);
+    window.history.pushState({ page: 'contact' }, '', '');
+  };
+  
   const closeContactModal = () => setShowContactModal(false);
 
   const handleNavigate = (path: string) => {
@@ -31,6 +50,8 @@ function App() {
       switch(path) {
         case '/about':
           setCurrentPage('blogList');
+          // Add history entry when navigating to blog list
+          window.history.pushState({ page: 'blogList' }, '', '');
           break;
         case '/projects':
           window.open('https://github.com/dhruvcharan', '_blank');
@@ -42,6 +63,7 @@ function App() {
           break;
         case '/now':
           setCurrentPage('now');
+          window.history.pushState({ page: 'now' }, '', '');
           break;
         default:
           console.log('Unknown path:', path);
@@ -49,13 +71,14 @@ function App() {
       }
       
       setIsNavigating(false);
-    }, 2000); 
+    }, 700); 
   };
 
   const handleBlogPostClick = (slug: string) => {
     setSelectedPostSlug(slug);
     setCurrentPage('blogPost');
     setShowContactModal(false);
+    window.history.pushState({ page: 'blogPost', slug }, '', '');
   };
 
   const closeSubPage = () => {

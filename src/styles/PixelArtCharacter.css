@@ -1,7 +1,7 @@
 .pixel-art-character {
     position: absolute;
-    width: 128px;
-    height: 128px;
+    width: 192px;
+    height: 192px;
     transform-origin: center;
 }
 

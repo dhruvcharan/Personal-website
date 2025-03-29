@@ -94,8 +94,8 @@ const InteractiveSprite: React.FC<InteractiveSpriteProps> = ({
         left: `${position.x}px`,
         top: `${position.y}px`,
         backgroundImage: `url(${spritePaths[currentFrameIndex]})`,
-        width: '64px',
-        height: '64px',
+        width: '128px',
+        height: '128px',
         backgroundSize: 'contain',
         backgroundRepeat: 'no-repeat',
         zIndex: 1000
