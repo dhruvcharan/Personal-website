@@ -35,7 +35,7 @@ interface PixelArtCharacterProps {
 }
 
 const JUMP_BUFFER = 100;
-const MOVE_SPEED = 2;
+const MOVE_SPEED = 5;
 const JUMP_HEIGHT = 80;
 const JUMP_DURATION = 1050;
 const getBaseYPosition = () => window.innerHeight - 175;
