@@ -56,8 +56,8 @@ const NowPage: React.FC<NowPageProps> = ({ onBackClick, onClose }) => {
             Currently working on a couple of side Projects and looking to learn
             more about building resilient intelligent systems that are maximally
             user-friendly. Striving to build a knowledge base on a foundation of
-            continuous learning and growth and a deep apprfrom app import
-            Appeciation for the things that make the world tick.
+            continuous learning and growth and a deep appeciation for the things
+            that make the world tick.
           </p>
         </section>
 
@@ -139,4 +139,3 @@ const NowPage: React.FC<NowPageProps> = ({ onBackClick, onClose }) => {
 };
 
 export default NowPage;
-
