@@ -14,6 +14,13 @@ export const postsMetadata: PostMetadata[] = [
       excerpt: ' A look at the potential n>1th order implications of the pervasive use of LLMs as a proxy for the human brain particularly in Software Development',
       markdownPath: 'posts/blog-1.md' 
     },
+    {
+      title: 'Theres no there there',
+      date: '2025-05-02',
+      slug: 'sincerity',
+      excerpt: 'what happens when conversation becomes devoid of meaning',
+      markdownPath: 'posts/blog-2.md'
+    }
 ];
 
 export const getSortedPostsMetadata = (): PostMetadata[] => {

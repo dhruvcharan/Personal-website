@@ -36,6 +36,10 @@ const ContactModal: React.FC<ContactModalProps> = ({onClose}) => {
             />
           </div>
           <h2> About Me </h2>
+          <blockquote className="personal-quote">
+            "when you don't create things, you become defined by your tastes rather than ability. your tastes only narrow & exclude people. so create.
+            -"_why
+          </blockquote>
           <p>
             I’m Dhruv Charan—a 25-year-old CS grad student at Stony Brook
             University. I’ve spent a few years as a Software Development
