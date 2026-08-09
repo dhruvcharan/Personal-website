@@ -1,10 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
 import PixelArtCharacter from "./PixelArtCharacter";
-import ActionBar from "./ActionBar";
 import InteractiveSprite from "./InteractiveSprite";
 import "../styles/GameEnvironment.css";
 
-//interaction sprites
+// Assets & Interaction Sprites
+import githubIcon from "../assets/github.png";
+import linkedinIcon from "../assets/linkedin.png";
+import nowIcon from "../assets/now.png";
+import blogIcon from "../assets/blog.png";
+import mailIcon from "../assets/mail.png";
+import pixelSatchel from "../assets/pixel-satchel.png";
+import interactSprite from "../assets/interact.png";
 import githubSprite1 from "../assets/interactions/github-interaction.png";
 import githubSprite2 from "../assets/interactions/github-interaction1.png";
 import githubSprite3 from "../assets/interactions/github-interaction2.png";
@@ -38,19 +44,34 @@ interface Position {
   y: number;
 }
 
+interface TargetMarker {
+  x: number;
+  y: number;
+  id: number;
+}
+
+interface InventoryItem {
+  id: string;
+  type: InteractiveObject['type'];
+  label: string;
+  verbText: string;
+  path: string;
+  icon: string;
+}
+
+const INVENTORY_ITEMS: InventoryItem[] = [
+  { id: 'blog', type: 'blog', label: 'Message Board', verbText: 'Examine Message Board (Go to Blog)', path: '/about', icon: blogIcon },
+  { id: 'github', type: 'github', label: 'Code Scroll', verbText: 'Read Code Scroll (Go to GitHub)', path: '/projects', icon: githubIcon },
+  { id: 'linkedin', type: 'linkedin', label: 'Network Journal', verbText: 'Open Network Journal (Go to LinkedIn)', path: '/linkedin', icon: linkedinIcon },
+  { id: 'now', type: 'now', label: 'Hourglass', verbText: 'Look at Hourglass (Go to Now Page)', path: '/now', icon: nowIcon },
+  { id: 'mail', type: 'mail', label: 'Mailbox', verbText: 'Open Mailbox (Contact / Email)', path: '/mail', icon: mailIcon },
+];
 
 const getRoadBoundaries = () => {
   const windowWidth = window.innerWidth;
-  
-
-
-  const leftBoundaryPercent = 0.05;
-
-  const rightBoundaryPercent = 0.95;
-  
   return {
-    left: windowWidth * leftBoundaryPercent,
-    right: windowWidth * rightBoundaryPercent
+    left: windowWidth * 0.05,
+    right: windowWidth * 0.92
   };
 };
 
@@ -58,18 +79,22 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const [showCharacter, setShowCharacter] = useState(true);
   const [isInteracting, setIsInteracting] = useState(false);
   const [interactiveObjects, setInteractiveObjects] = useState<InteractiveObject[]>([]);
-  const [activeButton, setActiveButton] = useState<HTMLDivElement | null>(null);
+  const [showInventory, setShowInventory] = useState(false);
+  const [isOpeningSatchel, setIsOpeningSatchel] = useState(false);
+  const [hoveredItem, setHoveredItem] = useState<InventoryItem | null>(null);
+  const [activePath, setActivePath] = useState<string | null>(null);
+
   const [characterPosition, setCharacterPosition] = useState<Position>({
     x: window.innerWidth * 0.2,
-    y: window.innerHeight - 130
+    y: window.innerHeight - 175
   });
-  
-  // Ref to keep track of character position
-  const characterPositionRef = useRef<Position>(characterPosition);
-  
 
+  const [walkTargetX, setWalkTargetX] = useState<number | null>(null);
+  const [targetMarker, setTargetMarker] = useState<TargetMarker | null>(null);
+
+  const characterPositionRef = useRef<Position>(characterPosition);
   const roadBoundariesRef = useRef(getRoadBoundaries());
- 
+
   const spriteCollections = {
     github: [githubSprite1, githubSprite2, githubSprite3],
     linkedin: [linkedinSprite1, linkedinSprite2, linkedinSprite3],
@@ -79,73 +104,70 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     unknown: []
   };
 
-
   useEffect(() => {
     const handleResize = () => {
       roadBoundariesRef.current = getRoadBoundaries();
     };
-    
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  
-  const updateCharacterPosition = (position: Position) => {
 
-    const boundaries = roadBoundariesRef.current;
-    const constrainedX = Math.max(
-      boundaries.left, 
-      Math.min(boundaries.right, position.x)
-    );
-    
-    const constrainedPosition = {
-      x: constrainedX,
-      y: position.y
-    };
-    
-    setCharacterPosition(constrainedPosition);
-    characterPositionRef.current = constrainedPosition;
+  const updateCharacterPosition = (pos: Position) => {
+    setCharacterPosition(pos);
+    characterPositionRef.current = pos;
   };
-  
-  const handleButtonClick = (path: string, buttonElement: HTMLDivElement) => {
-    if (isInteracting) return;
-    
-    console.log("Button clicked:", path);
-    setActiveButton(buttonElement);
-    
-    buttonElement.classList.add("deformed");
-    setTimeout(() => {
-      buttonElement.classList.remove("deformed");
-    }, 300);
-    
-    let type: InteractiveObject['type'] = 'unknown';
-    if (path === '/projects') {
-      type = 'github';
-    } else if (path === '/about') {
-      type = 'blog';
-    } else if (path === '/linkedin') {
-      type = 'linkedin';
-    } else if (path === '/now') {
-      type = 'now';
-    } else if (path === '/mail') {
-      type = 'mail';
+
+  // Click anywhere on stage floor -> Character walks to click location
+  const handleStageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('.satchel-transparent-btn') || target.closest('.scumm-pouch-modal')) {
+      return;
     }
-    
-    const spritePaths = spriteCollections[type];
 
-    const currentCharacterPos = characterPositionRef.current;
-    console.log('Character position used for sprite:', currentCharacterPos); 
+    const clickX = e.clientX;
+    const clickY = Math.min(e.clientY, window.innerHeight - 140);
 
-    
+    setTargetMarker({ x: clickX, y: clickY, id: Date.now() });
+    setWalkTargetX(clickX);
+
+    setTimeout(() => {
+      setTargetMarker(null);
+    }, 1000);
+  };
+
+  // Satchel Click -> Plays Character Reach Into Satchel Animation -> Opens Inventory
+  const handleSatchelClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (showInventory) {
+      setShowInventory(false);
+      setIsOpeningSatchel(false);
+      return;
+    }
+
+    setIsOpeningSatchel(true);
+    setTimeout(() => {
+      setIsOpeningSatchel(false);
+      setShowInventory(true);
+    }, 350);
+  };
+
+  // Trigger Inventory Item Interaction
+  const handleUseInventoryItem = (item: InventoryItem) => {
+    setShowInventory(false);
+    if (isInteracting) return;
+
+    setActivePath(item.path);
+    const spritePaths = spriteCollections[item.type] || [];
     const currentPos = {
-      x: currentCharacterPos.x,
-      y: currentCharacterPos.y - 0 
+      x: characterPositionRef.current.x,
+      y: characterPositionRef.current.y
     };
-   console.log("Current position for sprite:", currentPos);  
+
     setShowCharacter(false);
     setIsInteracting(true);
-    
+
     setInteractiveObjects([{
-      type,
+      type: item.type,
       position: currentPos,
       isInteracting: true,
       spritePaths
@@ -153,34 +175,96 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   };
 
   const handleInteractionComplete = () => {
-    console.log("Interaction complete");
-    
-    const path = activeButton?.getAttribute("data-path");
-    if (path) {
+    if (activePath) {
+      const destinationPath = activePath;
       setTimeout(() => {
         setInteractiveObjects([]);
         setIsInteracting(false);
         setShowCharacter(true);
-        onNavigate(path);
-        setActiveButton(null);
+        setActivePath(null);
+        onNavigate(destinationPath);
       }, 10);
     }
   };
 
+  const statusLineText = hoveredItem
+    ? hoveredItem.verbText
+    : "Look at inventory on bottom left to navigate to links or click to move around";
+
   return (
-    <div className="game-environment">
+    <div className="game-environment" onClick={handleStageClick}>
+      {/* SCUMM Status Plaque at Top Center */}
+      <div className="scumm-top-plaque">
+        <span className="plaque-text">{statusLineText}</span>
+      </div>
+
+      {/* Borderless Transparent Satchel Icon Button */}
+      <button
+        className="satchel-transparent-btn"
+        onClick={handleSatchelClick}
+      >
+        <span className="satchel-hover-tooltip">INVENTORY</span>
+        <img src={pixelSatchel} alt="Inventory Satchel" className="satchel-pixel-img" />
+      </button>
+
+      {/* Retro Inventory Window */}
+      {showInventory && (
+        <div className="scumm-pouch-overlay" onClick={() => setShowInventory(false)}>
+          <div className="scumm-pouch-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="pouch-header">
+              <span className="pouch-verb">{hoveredItem ? hoveredItem.verbText : "Dhruv's Inventory"}</span>
+              <button className="pouch-close-btn" onClick={() => setShowInventory(false)}>&times;</button>
+            </div>
+
+            <div className="pouch-grid">
+              {INVENTORY_ITEMS.map((item) => (
+                <div
+                  key={item.id}
+                  className="pouch-slot"
+                  onMouseEnter={() => setHoveredItem(item)}
+                  onMouseLeave={() => setHoveredItem(null)}
+                  onClick={() => handleUseInventoryItem(item)}
+                >
+                  <img src={item.icon} alt={item.label} className="pouch-item-img" />
+                  <span className="pouch-item-name">{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Background Stage - 100% Clean & Unobstructed */}
+      <div className="parallax-layer layer-stage">
+        <div className="cobblestone-path" />
+
+        {/* Target Crosshair Marker ("X Marks the Spot") */}
+        {targetMarker && (
+          <div
+            className="target-crosshair"
+            style={{ left: `${targetMarker.x}px`, top: `${targetMarker.y}px` }}
+          >
+            <div className="crosshair-x">✕</div>
+            <div className="crosshair-ring" />
+          </div>
+        )}
+      </div>
+
+      {/* Character Render - Fully Visible & Unobscured */}
       {showCharacter && !isInteracting && (
         <div className="character-container">
           <PixelArtCharacter
-            selectedLink={null}
-            position={characterPosition} 
-            onJump={() => {}}
+            position={characterPosition}
+            targetX={walkTargetX}
+            onArrival={() => setWalkTargetX(null)}
             onPositionUpdate={updateCharacterPosition}
             roadBoundaries={roadBoundariesRef.current}
+            isOpeningSatchel={isOpeningSatchel}
           />
         </div>
       )}
-      
+
+      {/* Interaction Sprites */}
       {interactiveObjects.map((obj, index) => (
         <InteractiveSprite
           key={`${obj.type}-${index}`}
@@ -191,10 +275,6 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
           onInteractionComplete={handleInteractionComplete}
         />
       ))}
-      
-      <div className="action-bar-container">
-        <ActionBar onButtonClick={handleButtonClick} />
-      </div>
     </div>
   );
 };

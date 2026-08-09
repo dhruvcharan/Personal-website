@@ -91,13 +91,16 @@ const InteractiveSprite: React.FC<InteractiveSpriteProps> = ({
       className={`interactive-sprite ${type} ${isAnimating ? 'animating' : ''}`}
       style={{
         position: 'absolute',
-        left: `${position.x}px`,
-        top: `${position.y}px`,
+        top: 0,
+        left: 0,
+        transform: `translate(${position.x}px, ${position.y}px)`,
         backgroundImage: `url(${spritePaths[currentFrameIndex]})`,
-        width: '128px',
-        height: '128px',
+        width: '192px',
+        height: '126px',
         backgroundSize: 'contain',
         backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center bottom',
+        imageRendering: 'pixelated',
         zIndex: 1000
       }}
     />

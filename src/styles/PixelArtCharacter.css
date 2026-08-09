@@ -1,8 +1,8 @@
 .pixel-art-character {
     position: absolute;
     width: 192px;
-    height: 192px;
-    transform-origin: center;
+    height: 126px;
+    transform-origin: bottom center;
 }
 
 .character-sprite {
@@ -10,13 +10,18 @@
     height: 100%;
     background-size: contain;
     background-repeat: no-repeat;
-    background-position: center;
+    background-position: center bottom;
 }
 
 /* Idle animation */
 .idle .character-sprite {
     background-image: url('../assets/character-idle.png');
     animation: idle 0.5s steps(2) infinite;
+}
+
+/* Interact / Pouch Pull animation */
+.interact .character-sprite {
+    background-image: url('../assets/interact.png');
 }
 
 /* Jump animation */
@@ -37,8 +42,10 @@
     animation: move-right 0.4s steps(4) infinite;
 }
 
-/* Facing direction */
-.facing-left {
+/* Facing direction flip for idle/jump/interact sprites */
+.idle.facing-left .character-sprite,
+.interact.facing-left .character-sprite,
+.jump.facing-left .character-sprite {
     transform: scaleX(-1);
 }
 

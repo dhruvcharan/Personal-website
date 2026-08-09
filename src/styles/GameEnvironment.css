@@ -9,49 +9,262 @@
     background-image: url('../assets/image_fx_\ \(3\).jpg');
     background-repeat: no-repeat;
     background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
+    background-position: center bottom;
     cursor: url('../assets/wand.png'), auto;
+    user-select: none;
 }
 
-/* Apply custom cursor to all interactive elements within game environment */
+/* Custom cursor application */
 .game-environment a,
 .game-environment button,
-.game-environment input[type="button"],
-.game-environment input[type="submit"],
-.game-environment .action-bar-container *,
-.game-environment [role="button"],
-.game-environment [tabindex="0"] {
-    cursor: url('../assets/wand.png'), auto !important;
+.game-environment .world-object-container {
+    cursor: url('../assets/wand.png'), pointer !important;
 }
 
-.game-stage {
+/* SCUMM Status Plaque at Top Center */
+.scumm-top-plaque {
+    position: fixed;
+    top: 65px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    background: rgba(10, 12, 24, 0.88);
+    border: 2px solid #e2a024;
+    border-radius: 6px;
+    padding: 6px 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.plaque-text {
+    color: #00f0ff;
+    font-family: 'VT323', 'Press Start 2P', monospace;
+    font-size: 22px;
+    letter-spacing: 1px;
+    text-shadow: 2px 2px 0 #000;
+}
+
+/* Stage Layer */
+.layer-stage {
     position: absolute;
-    bottom: 0;
+    top: 0;
     left: 0;
     width: 100%;
     height: 100%;
+    z-index: 4;
+    pointer-events: auto;
 }
 
-@keyframes scrollBackground {
-    from {
-        background-position: 0 0;
-    }
-    to {
-        background-position: -1920px 0;
-    }
-}
-
-.action-bar-container {
-    position: fixed;
-    bottom: 0;
+/* Walkable stage path overlay */
+.cobblestone-path {
+    position: absolute;
+    bottom: 110px;
     left: 0;
     width: 100%;
-    padding: 10px 0;
-    border-top: 3px solid #ff9900; /* Visible border on top */
-    background-color: rgba(0, 0, 0, 0.7);
-    box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.5);
+    height: 90px;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.35) 100%);
+}
+
+/* Borderless Transparent Satchel Icon Button */
+.satchel-transparent-btn {
+    position: fixed;
+    bottom: 32px;
+    left: 40px;
+    right: auto;
+    z-index: 500;
+    background: transparent;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.satchel-pixel-img {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    image-rendering: -moz-crisp-edges;
+    filter: drop-shadow(3px 4px 6px rgba(0, 0, 0, 0.9));
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.2s ease;
+}
+
+.satchel-transparent-btn:hover .satchel-pixel-img {
+    transform: scale(1.15) translateY(-4px);
+    filter: drop-shadow(0 0 16px rgba(255, 223, 128, 0.9));
+}
+
+.satchel-hover-tooltip {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #ffdf80;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-shadow: 2px 2px 0 #000, 0 0 6px #ffdf80;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    pointer-events: none;
+}
+
+.satchel-transparent-btn:hover .satchel-hover-tooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-3px);
+}
+
+/* Retro Inventory Window Overlay */
+.scumm-pouch-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(4, 6, 12, 0.65);
+    backdrop-filter: blur(3px);
     z-index: 1000;
     display: flex;
+    align-items: center;
     justify-content: center;
+}
+
+/* Sleek Clean Inventory Modal */
+.scumm-pouch-modal {
+    width: 90%;
+    max-width: 520px;
+    background: rgba(14, 16, 26, 0.96);
+    border: 1px solid #7a5c28;
+    border-radius: 8px;
+    padding: 18px 22px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+    font-family: 'Press Start 2P', monospace;
+}
+
+.pouch-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid #5a451d;
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+}
+
+.pouch-verb {
+    color: #00ffff;
+    font-family: 'VT323', monospace;
+    font-size: 24px;
+    letter-spacing: 1px;
+    text-shadow: 1px 1px 0 #000;
+}
+
+.pouch-close-btn {
+    background: transparent;
+    border: none;
+    color: #ff9999;
+    font-size: 26px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.pouch-close-btn:hover {
+    color: #ffffff;
+}
+
+/* 5-Slot Icon Grid (No big boxes or USE buttons) */
+.pouch-grid {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 10px 0;
+}
+
+.pouch-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 86px;
+    padding: 10px 4px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+}
+
+.pouch-slot:hover {
+    transform: translateY(-4px) scale(1.1);
+}
+
+.pouch-item-img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    filter: drop-shadow(2px 3px 4px rgba(0, 0, 0, 0.9));
+    transition: filter 0.15s ease;
+}
+
+.pouch-slot:hover .pouch-item-img {
+    filter: drop-shadow(0 0 10px #ffdf80);
+}
+
+.pouch-item-name {
+    color: #ffdf80;
+    font-family: 'VT323', monospace;
+    font-size: 17px;
+    margin-top: 6px;
+    text-shadow: 1px 1px 0 #000;
+    white-space: nowrap;
+}
+
+.pouch-slot:hover .pouch-item-name {
+    color: #00ffff;
+}
+
+/* Target Crosshair Marker ("X Marks the Spot") */
+.target-crosshair {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 99;
+}
+
+.crosshair-x {
+    color: #ff3333;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 0 0 8px #ff0000, 2px 2px 0 #000;
+    animation: xPulse 0.3s ease-out;
+}
+
+.crosshair-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 32px;
+    height: 32px;
+    border: 2px dashed #ffcc00;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: ringExpand 0.5s ease-out forwards;
+}
+
+@keyframes xPulse {
+    0% { transform: scale(1.5); opacity: 0.5; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes ringExpand {
+    0% { width: 10px; height: 10px; opacity: 1; }
+    100% { width: 40px; height: 40px; opacity: 0; }
 }

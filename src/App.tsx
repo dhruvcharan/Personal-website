@@ -96,11 +96,13 @@ function App() {
   return (
     <div className="App">
       {currentPage === 'home' && (
-        <div className="content">
-          <h1>Dhruv Charan</h1>
-          <p>Click on the links to have the character take you where you need to go</p>
+        <>
+          <div className="game-header-banner">
+            <h1 className="game-title">Dhruv Charan</h1>
+            <p className="game-subtitle">Click anywhere to walk, or select a destination</p>
+          </div>
           <GameEnvironment onNavigate={handleNavigate} />
-        </div>
+        </>
       )}
       
       {currentPage === 'now' && (

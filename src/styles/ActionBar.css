@@ -1,105 +1,74 @@
-.container {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  background-color: #282c34;
-  padding: 10px;
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
-}
-
-.link {
-  color: #61dafb;
-  text-decoration: none;
-  font-size: 1.2em;
-  transition: transform 0.2s;
-}
-
-.link:hover {
-  transform: scale(1.1);
-}
-
-.character-animation {
-  width: 50px;
-  height: 50px;
-  transition: transform 0.3s;
-}
-
-.character-move-left {
-  transform: translateX(-10px);
-}
-
-.character-move-right {
-  transform: translateX(10px);
-}
-
-.action-bar {
+.action-bar-container {
   position: fixed;
   bottom: 0;
   left: 0;
   width: 100%;
-  display: flex;         
-  justify-content: center; 
-  align-items: stretch;
-  gap: 15px;            
-  background-color: rgba(42, 42, 58, 0.2); 
-  border-top: 3px solid rgba(74, 74, 90, 0.5); 
-  /* background-color:transparent;  */
-  /* border-top: 0px solid #4a4a5a; */
-  padding: 8px 15px;
+  padding: 10px 0;
+  border-top: 3px solid #ff9900;
+  background-color: rgba(10, 12, 24, 0.85);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.6);
   z-index: 1000;
-  box-shadow: 0 -3px 6px rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: center;
 }
 
-.action-item {
+.action-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  padding: 4px 16px;
+}
+
+.action-item.signposted {
   position: relative;
   cursor: pointer;
-  overflow: hidden;
-  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  transform-origin: center;
+  padding: 8px 16px;
+  background: rgba(26, 30, 48, 0.8);
+  border: 2px solid #5a451d;
+  border-radius: 6px;
+  box-shadow: 2px 2px 0px #000000;
+  transition: all 0.2s ease;
+}
+
+.action-item.signposted:hover {
+  transform: translateY(-4px);
+  background: rgba(42, 50, 80, 0.95);
+  border-color: #ffc107;
+  box-shadow: 0 0 12px rgba(255, 193, 7, 0.4);
 }
 
 .action-icon {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
   margin-bottom: 4px;
-  transition: transform 0.3s ease;
-  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5));
+  transition: transform 0.2s ease;
 }
 
-.action-item span {
-  color: white;
-  font-family: 'Press Start 2P', cursive;
-  font-size: 10px;
-  text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
-  position: relative;
-  z-index: 1;
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.action-item:hover {
-  transform: translateY(-2px);
-}
-
-.action-item:hover .action-icon {
+.action-item.signposted:hover .action-icon {
   transform: scale(1.1);
 }
 
-.action-item:hover span {
-  opacity: 1;
+.signpost-label {
+  color: #ffdf80;
+  font-family: 'Press Start 2P', monospace, cursive;
+  font-size: 11px;
+  text-shadow: 1px 1px 0px #000000;
+  white-space: nowrap;
+  opacity: 1 !important; /* PERMANENTLY VISIBLE SIGNPOSTING */
+  margin-top: 2px;
 }
 
-.action-item.active {
-  transform: scale(0.95);
+.action-item.signposted:hover .signpost-label {
+  color: #ffffff;
+  text-shadow: 0 0 6px #ffc107, 1px 1px 0 #000;
 }
 
 .action-item.deformed {
@@ -107,39 +76,7 @@
 }
 
 @keyframes deform {
-  0% {
-    transform: scale(1, 1);
-  }
-  50% {
-    transform: scale(1.2, 0.8);
-  }
-  100% {
-    transform: scale(1, 1);
-  }
-}
-
-.character-container {
-  height: 70px;
-  position: relative;
-  width: 100%;
-}
-
-.links-container {
-  display: flex;
-  justify-content: space-around;
-  width: 100%;
-  padding: 10px 0;
-}
-
-.links-container button {
-  padding: 8px 16px;
-  cursor: pointer;
-  border: none;
-  border-radius: 4px;
-  font-weight: bold;
-  transition: all 0.3s ease;
-}
-
-.links-container button:hover {
-  transform: scale(1.05);
+  0% { transform: scale(1, 1); }
+  50% { transform: scale(1.15, 0.85); }
+  100% { transform: scale(1, 1); }
 }
