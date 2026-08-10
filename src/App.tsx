@@ -99,7 +99,6 @@ function App() {
         <>
           <div className="game-header-banner">
             <h1 className="game-title">Dhruv Charan</h1>
-            <p className="game-subtitle">Click anywhere to walk, or select a destination</p>
           </div>
           <GameEnvironment onNavigate={handleNavigate} />
         </>
