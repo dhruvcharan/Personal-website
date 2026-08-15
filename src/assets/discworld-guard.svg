@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 48" width="128" height="192" shape-rendering="crispEdges">
+  <!-- Dented Steel Helmet -->
+  <rect x="11" y="2" width="10" height="3" fill="#8899a6"/>
+  <rect x="10" y="5" width="12" height="4" fill="#aab8c2"/>
+  <rect x="9" y="8" width="14" height="2" fill="#657786"/>
+  <rect x="15" y="1" width="2" height="3" fill="#ffd700"/> <!-- Helmet Crest -->
+
+  <!-- Face & Moustache -->
+  <rect x="11" y="10" width="10" height="6" fill="#ffcc99"/>
+  <rect x="10" y="12" width="2" height="2" fill="#000000"/> <!-- Left Eye -->
+  <rect x="20" y="12" width="2" height="2" fill="#000000"/> <!-- Right Eye -->
+  <rect x="11" y="14" width="10" height="2" fill="#5c3a21"/> <!-- Guard Moustache -->
+
+  <!-- Chainmail Neck Coif -->
+  <rect x="9" y="16" width="14" height="3" fill="#8899a6"/>
+
+  <!-- Guard Tunic & Armor Chestplate -->
+  <rect x="8" y="19" width="16" height="12" fill="#8b0000"/> <!-- Crimson Tunic -->
+  <rect x="11" y="19" width="10" height="10" fill="#aab8c2"/> <!-- Steel Breastplate -->
+  <rect x="12" y="20" width="8" height="8" fill="#e1e8ed"/> <!-- Plate Highlight -->
+  <rect x="15" y="22" width="2" height="4" fill="#ffd700"/> <!-- Gold Crest Emblem -->
+
+  <!-- Leather Belt & Buckle -->
+  <rect x="8" y="31" width="16" height="3" fill="#5c3a21"/>
+  <rect x="14" y="31" width="4" height="3" fill="#ffd700"/>
+
+  <!-- Cloak / Tunic Lower Skirt -->
+  <rect x="7" y="34" width="18" height="8" fill="#6b0000"/>
+
+  <!-- Arms & Sleeves -->
+  <rect x="6" y="20" width="3" height="10" fill="#8b0000"/> <!-- Left Arm -->
+  <rect x="23" y="20" width="3" height="10" fill="#8b0000"/> <!-- Right Arm -->
+  <rect x="6" y="30" width="3" height="3" fill="#ffcc99"/> <!-- Left Hand -->
+  <rect x="23" y="30" width="3" height="3" fill="#ffcc99"/> <!-- Right Hand -->
+
+  <!-- Guard Halberd / Spear Staff -->
+  <rect x="26" y="4" width="2" height="40" fill="#5c3a21"/> <!-- Wood Shaft -->
+  <rect x="24" y="4" width="6" height="6" fill="#e1e8ed"/> <!-- Steel Axe Head -->
+  <rect x="26" y="0" width="2" height="5" fill="#aab8c2"/> <!-- Spear Tip -->
+
+  <!-- Legs & Leather Boots -->
+  <rect x="10" y="42" width="5" height="6" fill="#3d2314"/> <!-- Left Boot -->
+  <rect x="17" y="42" width="5" height="6" fill="#3d2314"/> <!-- Right Boot -->
+  <rect x="9" y="46" width="6" height="2" fill="#24140b"/>
+  <rect x="17" y="46" width="6" height="2" fill="#24140b"/>
+</svg>

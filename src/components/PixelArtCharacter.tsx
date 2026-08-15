@@ -11,6 +11,12 @@ interface RoadBoundaries {
   right: number;
 }
 
+export interface ObstacleHitbox {
+  id: string;
+  left: number;
+  right: number;
+}
+
 interface PixelArtCharacterProps {
   selectedLink?: string | null;
   position: Position;
@@ -19,7 +25,22 @@ interface PixelArtCharacterProps {
   onJump?: () => void;
   onPositionUpdate?: (position: Position) => void;
   roadBoundaries?: RoadBoundaries;
+  obstacles?: ObstacleHitbox[];
   isOpeningSatchel?: boolean;
+  speechText?: string | null;
+  isCastingWand?: boolean;
+  onSpeechComplete?: () => void;
+}
+
+type IdleFlavor = "idle" | "idle-ponder" | "idle-fidget" | "idle-blink";
+type AnimationState = IdleFlavor | "jump" | "move-left" | "move-right" | "interact";
+
+interface Particle {
+  id: number;
+  x: number;
+  y: number;
+  type: "dust";
+  size: number;
 }
 
 const MOVE_SPEED = 6;
@@ -27,7 +48,6 @@ const JUMP_HEIGHT = 80;
 const JUMP_DURATION = 1050;
 const getBaseYPosition = () => window.innerHeight - 175;
 
-// Easing functions
 const easeOutQuad = (t: number): number => -t * (t - 2);
 const easeInQuad = (t: number): number => t * t;
 
@@ -37,64 +57,149 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
   onArrival,
   onPositionUpdate,
   roadBoundaries = { left: 0, right: window.innerWidth },
-  isOpeningSatchel = false
+  obstacles = [],
+  isOpeningSatchel = false,
+  speechText = null,
+  isCastingWand = false,
+  onSpeechComplete
 }) => {
   const [currentPosition, setCurrentPosition] = useState<Position>({
-    x: position.x || window.innerWidth * 0.2, 
+    x: position.x || window.innerWidth * 0.2,
     y: getBaseYPosition(),
   });
-  const [animation, setAnimation] = useState<"idle" | "jump" | "move-left" | "move-right" | "interact">("idle");
+  const [animation, setAnimation] = useState<AnimationState>("idle");
   const [direction, setDirection] = useState<"left" | "right">("right");
   const [isJumping, setIsJumping] = useState(false);
-  const characterRef = useRef<HTMLDivElement>(null);
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const [displayedSpeech, setDisplayedSpeech] = useState<string | null>(null);
 
-  const keyPressedRef = useRef<{ left: boolean; right: boolean }>({
-    left: false,
-    right: false,
-  });
+  const characterRef = useRef<HTMLDivElement>(null);
+  const keyPressedRef = useRef<{ left: boolean; right: boolean }>({ left: false, right: false });
   const movementFrameRef = useRef<number | null>(null);
   const jumpFrameRef = useRef<number | null>(null);
   const targetWalkFrameRef = useRef<number | null>(null);
   const initialYPositionRef = useRef<number>(getBaseYPosition());
   const lastReportedPosition = useRef<Position>({ x: 0, y: 0 });
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const clampXPosition = (xPos: number): number => {
+  const clampXPosition = (prevX: number, nextX: number): number => {
     const minX = roadBoundaries.left;
     const maxX = roadBoundaries.right - (characterRef.current?.offsetWidth || 64);
-    return Math.max(minX, Math.min(maxX, xPos));
+    let clamped = Math.max(minX, Math.min(maxX, nextX));
+
+    const charCenterX = prevX + 96;
+    const nextCenterX = clamped + 96;
+
+    // Obstacle Hitbox Collision Checks
+    for (const obs of obstacles) {
+      if (nextCenterX > charCenterX) {
+        // Moving right -> check if crossing obstacle left boundary
+        if (charCenterX <= obs.left && nextCenterX > obs.left) {
+          clamped = obs.left - 96;
+          break;
+        }
+      } else if (nextCenterX < charCenterX) {
+        // Moving left -> check if crossing obstacle right boundary
+        if (charCenterX >= obs.right && nextCenterX < obs.right) {
+          clamped = obs.right - 96;
+          break;
+        }
+      }
+    }
+
+    return clamped;
   };
 
+  // Dust Particle Spawner on step
+  const spawnDust = (x: number, y: number) => {
+    const newParticle: Particle = {
+      id: Date.now() + Math.random(),
+      x: x + 80 + (Math.random() * 20 - 10),
+      y: y + 110,
+      type: "dust",
+      size: Math.random() * 5 + 3
+    };
+    setParticles(prev => [...prev.slice(-8), newParticle]);
+  };
+
+  // Handle Satchel & Reaching Action
   useEffect(() => {
-    if (isOpeningSatchel) {
+    if (isOpeningSatchel || isCastingWand) {
       setAnimation("interact");
     } else if (animation === "interact") {
       setAnimation("idle");
     }
-  }, [isOpeningSatchel]);
+  }, [isOpeningSatchel, isCastingWand]);
 
-  // Keyboard Movement Loop
+  // Floating text timer
+  useEffect(() => {
+    if (speechText) {
+      setDisplayedSpeech(speechText);
+      const timer = setTimeout(() => {
+        setDisplayedSpeech(null);
+        if (onSpeechComplete) onSpeechComplete();
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [speechText, onSpeechComplete]);
+
+  // Subtle Idle Flavor Loop
+  useEffect(() => {
+    if (animation.startsWith("move") || animation === "jump" || isOpeningSatchel || isCastingWand) {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      return;
+    }
+
+    const scheduleNextIdleFlavor = () => {
+      idleTimerRef.current = setTimeout(() => {
+        const flavors: IdleFlavor[] = ["idle-ponder", "idle-fidget", "idle-blink"];
+        const chosenFlavor = flavors[Math.floor(Math.random() * flavors.length)];
+        
+        setAnimation(chosenFlavor);
+
+        setTimeout(() => {
+          setAnimation("idle");
+          scheduleNextIdleFlavor();
+        }, 1800);
+      }, 5000 + Math.random() * 4000);
+    };
+
+    scheduleNextIdleFlavor();
+
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, [animation, isOpeningSatchel, isCastingWand]);
+
+  // Keyboard Movement
   const startKeyboardMovement = () => {
     if (movementFrameRef.current !== null) {
       cancelAnimationFrame(movementFrameRef.current);
     }
 
+    let stepCount = 0;
     const moveCharacter = () => {
       setCurrentPosition((prev) => {
-        let newX = prev.x;
+        let rawNextX = prev.x;
 
         if (keyPressedRef.current.left) {
-          newX -= MOVE_SPEED;
+          rawNextX -= MOVE_SPEED;
           setDirection("left");
           setAnimation("move-left");
         } else if (keyPressedRef.current.right) {
-          newX += MOVE_SPEED;
+          rawNextX += MOVE_SPEED;
           setDirection("right");
           setAnimation("move-right");
         } else {
           setAnimation("idle");
         }
 
-        const clampedX = clampXPosition(newX);
+        stepCount++;
+        if (stepCount % 12 === 0) {
+          spawnDust(prev.x, prev.y);
+        }
+
+        const clampedX = clampXPosition(prev.x, rawNextX);
         return { x: clampedX, y: isJumping ? prev.y : getBaseYPosition() };
       });
 
@@ -106,7 +211,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
     movementFrameRef.current = requestAnimationFrame(moveCharacter);
   };
 
-  // Point & Click Walk-To Target Loop
+  // Point & Click Walk-To Target Loop with Collision Clamping
   useEffect(() => {
     if (targetX === null || targetX === undefined) return;
 
@@ -115,15 +220,14 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
       targetWalkFrameRef.current = null;
     }
 
-    const clampedTargetX = clampXPosition(targetX);
+    let stepCount = 0;
 
     const stepTargetWalk = () => {
       setCurrentPosition((prev) => {
-        const dx = clampedTargetX - prev.x;
+        const dx = targetX - prev.x;
         const dist = Math.abs(dx);
 
         if (dist <= MOVE_SPEED) {
-          // Arrived!
           setAnimation("idle");
           if (targetWalkFrameRef.current !== null) {
             cancelAnimationFrame(targetWalkFrameRef.current);
@@ -132,15 +236,35 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
           if (onArrival) {
             setTimeout(onArrival, 20);
           }
-          return { x: clampedTargetX, y: getBaseYPosition() };
+          return { x: clampXPosition(prev.x, targetX), y: getBaseYPosition() };
         }
 
         const newDirection = dx > 0 ? "right" : "left";
         setDirection(newDirection);
         setAnimation(`move-${newDirection}`);
 
-        const stepX = prev.x + (dx > 0 ? MOVE_SPEED : -MOVE_SPEED);
-        return { x: clampXPosition(stepX), y: getBaseYPosition() };
+        stepCount++;
+        if (stepCount % 10 === 0) {
+          spawnDust(prev.x, prev.y);
+        }
+
+        const rawStepX = prev.x + (dx > 0 ? MOVE_SPEED : -MOVE_SPEED);
+        const clampedX = clampXPosition(prev.x, rawStepX);
+
+        // If collision stopped us from moving further toward target, arrive!
+        if (Math.abs(clampedX - prev.x) < 0.5) {
+          setAnimation("idle");
+          if (targetWalkFrameRef.current !== null) {
+            cancelAnimationFrame(targetWalkFrameRef.current);
+            targetWalkFrameRef.current = null;
+          }
+          if (onArrival) {
+            setTimeout(onArrival, 20);
+          }
+          return { x: clampedX, y: getBaseYPosition() };
+        }
+
+        return { x: clampedX, y: getBaseYPosition() };
       });
 
       targetWalkFrameRef.current = requestAnimationFrame(stepTargetWalk);
@@ -154,9 +278,9 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
         targetWalkFrameRef.current = null;
       }
     };
-  }, [targetX, roadBoundaries]);
+  }, [targetX, roadBoundaries, obstacles]);
 
-  // Keyboard Event Listeners
+  // Keyboard Listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isJumping) return;
@@ -234,6 +358,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
 
     const baseYPosition = getBaseYPosition();
     setCurrentPosition((prev) => ({ ...prev, y: baseYPosition }));
+    spawnDust(currentPosition.x, baseYPosition);
 
     if (keyPressedRef.current.left) {
       setAnimation("move-left");
@@ -266,7 +391,36 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
         transform: `translate(${currentPosition.x}px, ${currentPosition.y}px)`,
       }}
     >
+      {/* Clean Floating Text directly above character's head */}
+      {displayedSpeech && (
+        <div className="floating-character-text">
+          {displayedSpeech}
+        </div>
+      )}
+
+      {/* Subtle Ponder '?' icon */}
+      {animation === "idle-ponder" && (
+        <div className="ponder-thought-bubble">?</div>
+      )}
+
+      {/* Character Sprite Box */}
       <div className="character-sprite" />
+
+      {/* Dust Particles */}
+      <div className="character-particles">
+        {particles.map(p => (
+          <div
+            key={p.id}
+            className="particle dust"
+            style={{
+              left: `${p.x - currentPosition.x}px`,
+              top: `${p.y - currentPosition.y}px`,
+              width: `${p.size}px`,
+              height: `${p.size}px`
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 };

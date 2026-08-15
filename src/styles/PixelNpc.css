@@ -1,0 +1,88 @@
+.pixel-npc-container {
+    position: absolute;
+    bottom: 110px;
+    transform: translateX(-50%);
+    z-index: 9;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.npc-sprite-box {
+    width: 96px;
+    height: 110px;
+    position: relative;
+    transform-origin: bottom center;
+}
+
+.npc-guard-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    filter: drop-shadow(2px 4px 6px rgba(0, 0, 0, 0.9));
+    animation: guardIdleBreathing 1.8s ease-in-out infinite alternate;
+    transform: scaleX(-1); /* Facing left towards player */
+    transition: filter 0.2s ease, transform 0.15s ease;
+}
+
+.pixel-npc-container:hover .npc-guard-img {
+    filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8)) drop-shadow(2px 4px 6px rgba(0, 0, 0, 0.9));
+    transform: scaleX(-1) translateY(-2px);
+}
+
+/* Floating text directly over Guard's head */
+.floating-npc-text {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px);
+    color: #ffeb3b;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 1000;
+    animation: npcTextFade 0.2s ease-out;
+}
+
+/* Name tag on hover */
+.npc-hover-indicator {
+    position: absolute;
+    top: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #ffdf80;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    text-shadow: 1px 1px 0 #000;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+}
+
+.pixel-npc-container:hover .npc-hover-indicator {
+    opacity: 1;
+}
+
+/* Guard Idle Animations */
+@keyframes guardIdleBreathing {
+    0% {
+        transform: scaleX(-1) translateY(0);
+    }
+    50% {
+        transform: scaleX(-1) translateY(-2px);
+    }
+    100% {
+        transform: scaleX(-1) translateY(-3px);
+    }
+}
+
+@keyframes npcTextFade {
+    0% { opacity: 0; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(-10px); }
+}

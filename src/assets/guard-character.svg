@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 64" width="96" height="128" shape-rendering="crispEdges">
+  <!-- Guard Helmet & Outline -->
+  <rect x="16" y="6" width="16" height="4" fill="#26170d"/>
+  <rect x="14" y="10" width="20" height="6" fill="#4d2f1a"/>
+  <rect x="16" y="8" width="16" height="4" fill="#7a4b29"/>
+  <rect x="18" y="6" width="12" height="2" fill="#a36b3d"/>
+
+  <!-- Face & Eyes -->
+  <rect x="16" y="16" width="16" height="10" fill="#f5c999"/>
+  <rect x="15" y="16" width="1" height="10" fill="#26170d"/>
+  <rect x="32" y="16" width="1" height="10" fill="#26170d"/>
+  <rect x="18" y="20" width="3" height="3" fill="#26170d"/> <!-- Left Eye -->
+  <rect x="27" y="20" width="3" height="3" fill="#26170d"/> <!-- Right Eye -->
+  <rect x="18" y="24" width="12" height="2" fill="#4d2f1a"/> <!-- Moustache / Beard -->
+
+  <!-- Neck & Guard Armor / Chest -->
+  <rect x="14" y="26" width="20" height="18" fill="#5c381e"/> <!-- Leather Armor -->
+  <rect x="12" y="28" width="4" height="8" fill="#7a4b29"/> <!-- Left Shoulder Pauldron -->
+  <rect x="32" y="28" width="4" height="8" fill="#7a4b29"/> <!-- Right Shoulder Pauldron -->
+  <rect x="18" y="28" width="12" height="12" fill="#8c5832"/> <!-- Chest Plate -->
+  <rect x="20" y="30" width="8" height="8" fill="#b37444"/> <!-- Highlight -->
+
+  <!-- Leather Belt & Buckle -->
+  <rect x="14" y="44" width="20" height="4" fill="#26170d"/>
+  <rect x="21" y="44" width="6" height="4" fill="#d49a00"/> <!-- Gold Buckle -->
+
+  <!-- Guard Tunic Skirt -->
+  <rect x="14" y="48" width="20" height="6" fill="#3a5a3a"/> <!-- Forest Green Tunic -->
+
+  <!-- Arms & Hands -->
+  <rect x="10" y="28" width="4" height="16" fill="#3a5a3a"/>
+  <rect x="34" y="28" width="4" height="16" fill="#3a5a3a"/>
+  <rect x="10" y="44" width="4" height="4" fill="#f5c999"/> <!-- Left Hand -->
+  <rect x="34" y="44" width="4" height="4" fill="#f5c999"/> <!-- Right Hand -->
+
+  <!-- Guard Spear / Halberd -->
+  <rect x="38" y="4" width="3" height="56" fill="#26170d"/> <!-- Wood Shaft -->
+  <rect x="38" y="6" width="3" height="52" fill="#5c381e"/>
+  <rect x="36" y="6" width="7" height="10" fill="#aab8c2"/> <!-- Spear Head -->
+  <rect x="37" y="2" width="5" height="4" fill="#e1e8ed"/> <!-- Spear Tip -->
+  <rect x="38" y="0" width="3" height="2" fill="#ffffff"/>
+
+  <!-- Legs & Boots -->
+  <rect x="16" y="54" width="6" height="8" fill="#26170d"/> <!-- Left Boot -->
+  <rect x="26" y="54" width="6" height="8" fill="#26170d"/> <!-- Right Boot -->
+  <rect x="14" y="60" width="8" height="4" fill="#1a1009"/>
+  <rect x="26" y="60" width="8" height="4" fill="#1a1009"/>
+</svg>

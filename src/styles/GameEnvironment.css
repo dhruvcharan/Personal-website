@@ -17,21 +17,21 @@
 /* Custom cursor application */
 .game-environment a,
 .game-environment button,
-.game-environment .world-object-container {
+.game-environment .ground-collectible-item {
     cursor: url('../assets/wand.png'), pointer !important;
 }
 
 /* SCUMM Status Plaque at Top Center */
 .scumm-top-plaque {
     position: fixed;
-    top: 65px;
+    top: 60px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 200;
     background: rgba(10, 12, 24, 0.88);
     border: 2px solid #e2a024;
     border-radius: 6px;
-    padding: 6px 16px;
+    padding: 6px 18px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
     pointer-events: none;
     white-space: nowrap;
@@ -66,6 +66,29 @@
     background: linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.35) 100%);
 }
 
+/* Collectible item resting naturally on the ground with tilt & ground shadow */
+.ground-collectible-item {
+    position: absolute;
+    bottom: 68px;
+    transform: translateX(-50%) rotate(-22deg);
+    transform-origin: bottom center;
+    z-index: 8;
+    cursor: pointer;
+    transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.25s ease;
+}
+
+.ground-collectible-item:hover {
+    transform: translateX(-50%) rotate(-14deg) translateY(-4px) scale(1.12);
+}
+
+.ground-item-img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    filter: drop-shadow(4px 6px 8px rgba(0, 0, 0, 0.95));
+}
+
 /* Borderless Transparent Satchel Icon Button */
 .satchel-transparent-btn {
     position: fixed;
@@ -98,7 +121,7 @@
 
 .satchel-transparent-btn:hover .satchel-pixel-img {
     transform: scale(1.15) translateY(-4px);
-    filter: drop-shadow(0 0 16px rgba(255, 223, 128, 0.9));
+    filter: drop-shadow(0 0 12px rgba(255, 223, 128, 0.8));
 }
 
 .satchel-hover-tooltip {
@@ -110,7 +133,7 @@
     font-family: 'Press Start 2P', monospace;
     font-size: 11px;
     letter-spacing: 1px;
-    text-shadow: 2px 2px 0 #000, 0 0 6px #ffdf80;
+    text-shadow: 2px 2px 0 #000;
     white-space: nowrap;
     opacity: 0;
     transition: opacity 0.15s ease, transform 0.15s ease;
@@ -142,7 +165,7 @@
     width: 90%;
     max-width: 520px;
     background: rgba(14, 16, 26, 0.96);
-    border: 1px solid #7a5c28;
+    border: 2px solid #e2a024;
     border-radius: 8px;
     padding: 18px 22px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
@@ -179,10 +202,10 @@
     color: #ffffff;
 }
 
-/* 5-Slot Icon Grid (No big boxes or USE buttons) */
+/* Inventory Icon Grid */
 .pouch-grid {
     display: flex;
-    justify-content: space-around;
+    justify-content: flex-start;
     align-items: center;
     flex-wrap: wrap;
     gap: 14px;
@@ -203,6 +226,7 @@
 
 .pouch-slot:hover {
     transform: translateY(-4px) scale(1.1);
+    background: rgba(255, 223, 128, 0.08);
 }
 
 .pouch-item-img {
@@ -214,7 +238,7 @@
 }
 
 .pouch-slot:hover .pouch-item-img {
-    filter: drop-shadow(0 0 10px #ffdf80);
+    filter: drop-shadow(0 0 8px #ffdf80);
 }
 
 .pouch-item-name {
@@ -230,7 +254,7 @@
     color: #00ffff;
 }
 
-/* Target Crosshair Marker ("X Marks the Spot") */
+/* Target Crosshair Marker */
 .target-crosshair {
     position: absolute;
     transform: translate(-50%, -50%);

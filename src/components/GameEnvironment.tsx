@@ -3,14 +3,14 @@ import PixelArtCharacter from "./PixelArtCharacter";
 import InteractiveSprite from "./InteractiveSprite";
 import "../styles/GameEnvironment.css";
 
-// Assets & Interaction Sprites
+// Assets & Navigation Icons
 import githubIcon from "../assets/github.png";
 import linkedinIcon from "../assets/linkedin.png";
 import nowIcon from "../assets/now.png";
 import blogIcon from "../assets/blog.png";
 import mailIcon from "../assets/mail.png";
 import pixelSatchel from "../assets/pixel-satchel.png";
-import interactSprite from "../assets/interact.png";
+
 import githubSprite1 from "../assets/interactions/github-interaction.png";
 import githubSprite2 from "../assets/interactions/github-interaction1.png";
 import githubSprite3 from "../assets/interactions/github-interaction2.png";
@@ -57,14 +57,22 @@ interface InventoryItem {
   verbText: string;
   path: string;
   icon: string;
+  description?: string;
 }
 
-const INVENTORY_ITEMS: InventoryItem[] = [
+interface FloorItem {
+  id: string;
+  label: string;
+  icon: string;
+  xPercent: number;
+  pickedUp: boolean;
+}
+
+const DEFAULT_INVENTORY_ITEMS: InventoryItem[] = [
   { id: 'blog', type: 'blog', label: 'Message Board', verbText: 'Examine Message Board (Go to Blog)', path: '/about', icon: blogIcon },
-  { id: 'github', type: 'github', label: 'Code Scroll', verbText: 'Read Code Scroll (Go to GitHub)', path: '/projects', icon: githubIcon },
+  { id: 'github', type: 'github', label: 'Code Scroll', verbText: 'Inspect Code Scroll (Go to GitHub)', path: '/projects', icon: githubIcon },
   { id: 'linkedin', type: 'linkedin', label: 'Network Journal', verbText: 'Open Network Journal (Go to LinkedIn)', path: '/linkedin', icon: linkedinIcon },
-  { id: 'now', type: 'now', label: 'Hourglass', verbText: 'Look at Hourglass (Go to Now Page)', path: '/now', icon: nowIcon },
-  { id: 'mail', type: 'mail', label: 'Mailbox', verbText: 'Open Mailbox (Contact / Email)', path: '/mail', icon: mailIcon },
+  { id: 'mail', type: 'mail', label: 'Golden Mailbox', verbText: 'Open Golden Mailbox (Contact / Email)', path: '/mail', icon: mailIcon },
 ];
 
 const getRoadBoundaries = () => {
@@ -81,8 +89,19 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const [interactiveObjects, setInteractiveObjects] = useState<InteractiveObject[]>([]);
   const [showInventory, setShowInventory] = useState(false);
   const [isOpeningSatchel, setIsOpeningSatchel] = useState(false);
-  const [hoveredItem, setHoveredItem] = useState<InventoryItem | null>(null);
+  const [hoveredItem, setHoveredItem] = useState<InventoryItem | FloorItem | { label: string; verbText: string } | null>(null);
   const [activePath, setActivePath] = useState<string | null>(null);
+  const [characterSpeech, setCharacterSpeech] = useState<string | null>(null);
+  const [inventoryList, setInventoryList] = useState<InventoryItem[]>(DEFAULT_INVENTORY_ITEMS);
+
+  // Mystic Hourglass resting naturally on the ground floor
+  const [floorItem, setFloorItem] = useState<FloorItem>({
+    id: 'now',
+    label: 'Mystic Hourglass',
+    icon: nowIcon,
+    xPercent: 0.60,
+    pickedUp: false
+  });
 
   const [characterPosition, setCharacterPosition] = useState<Position>({
     x: window.innerWidth * 0.2,
@@ -94,6 +113,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
 
   const characterPositionRef = useRef<Position>(characterPosition);
   const roadBoundariesRef = useRef(getRoadBoundaries());
+  const pendingFloorPickupRef = useRef<boolean>(false);
 
   const spriteCollections = {
     github: [githubSprite1, githubSprite2, githubSprite3],
@@ -117,10 +137,15 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     characterPositionRef.current = pos;
   };
 
-  // Click anywhere on stage floor -> Character walks to click location
+  // Stage Floor Click -> Character walks to click location
   const handleStageClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
-    if (target.closest('.satchel-transparent-btn') || target.closest('.scumm-pouch-modal')) {
+    if (
+      target.closest('.satchel-transparent-btn') ||
+      target.closest('.scumm-pouch-modal') ||
+      target.closest('.ground-collectible-item') ||
+      target.closest('.pixel-npc-container')
+    ) {
       return;
     }
 
@@ -129,13 +154,60 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
 
     setTargetMarker({ x: clickX, y: clickY, id: Date.now() });
     setWalkTargetX(clickX);
+    pendingFloorPickupRef.current = false;
 
     setTimeout(() => {
       setTargetMarker(null);
-    }, 1000);
+    }, 900);
   };
 
-  // Satchel Click -> Plays Character Reach Into Satchel Animation -> Opens Inventory
+  // Click floor collectible item -> Walk to item and pick it up!
+  const handleFloorItemClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (floorItem.pickedUp) return;
+
+    const currentX = characterPositionRef.current.x;
+    const itemRawX = window.innerWidth * floorItem.xPercent;
+    const stopXPos = currentX < itemRawX ? itemRawX - 60 : itemRawX + 60;
+
+    pendingFloorPickupRef.current = true;
+    setWalkTargetX(stopXPos);
+    setTargetMarker({ x: itemRawX, y: window.innerHeight - 175, id: Date.now() });
+  };
+
+  // Arrival handler
+  const handleArrival = () => {
+    setWalkTargetX(null);
+    setTargetMarker(null);
+
+    if (pendingFloorPickupRef.current && !floorItem.pickedUp) {
+      pendingFloorPickupRef.current = false;
+      executePickUpItem();
+    }
+  };
+
+  // Pick up floor item action
+  const executePickUpItem = () => {
+    setIsOpeningSatchel(true);
+    setCharacterSpeech("Picked up the Mystic Hourglass!");
+
+    setTimeout(() => {
+      setIsOpeningSatchel(false);
+      setFloorItem(prev => ({ ...prev, pickedUp: true }));
+
+      const newItem: InventoryItem = {
+        id: 'now',
+        type: 'now',
+        label: 'Mystic Hourglass',
+        verbText: 'Look at Mystic Hourglass (Go to Now Page)',
+        path: '/now',
+        icon: nowIcon
+      };
+      setInventoryList(prev => [...prev, newItem]);
+    }, 650);
+  };
+
+  // Satchel Pouch Open / Close
   const handleSatchelClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (showInventory) {
@@ -148,16 +220,21 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     setTimeout(() => {
       setIsOpeningSatchel(false);
       setShowInventory(true);
-    }, 350);
+    }, 300);
   };
 
-  // Trigger Inventory Item Interaction
   const handleUseInventoryItem = (item: InventoryItem) => {
     setShowInventory(false);
     if (isInteracting) return;
 
-    setActivePath(item.path);
-    const spritePaths = spriteCollections[item.type] || [];
+    if (item.path) {
+      executeNavigationInteraction(item.type, item.path);
+    }
+  };
+
+  const executeNavigationInteraction = (type: InteractiveObject['type'], path: string) => {
+    setActivePath(path);
+    const spritePaths = spriteCollections[type] || [];
     const currentPos = {
       x: characterPositionRef.current.x,
       y: characterPositionRef.current.y
@@ -167,7 +244,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     setIsInteracting(true);
 
     setInteractiveObjects([{
-      type: item.type,
+      type,
       position: currentPos,
       isInteracting: true,
       spritePaths
@@ -182,14 +259,15 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         setIsInteracting(false);
         setShowCharacter(true);
         setActivePath(null);
+        setCharacterSpeech(null);
         onNavigate(destinationPath);
       }, 10);
     }
   };
 
   const statusLineText = hoveredItem
-    ? hoveredItem.verbText
-    : "Look at inventory on bottom left to navigate to links or click to move around";
+    ? ('verbText' in hoveredItem ? hoveredItem.verbText : `Pick up ${hoveredItem.label}`)
+    : "Click floor to walk or open inventory satchel on bottom left";
 
   return (
     <div className="game-environment" onClick={handleStageClick}>
@@ -198,7 +276,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         <span className="plaque-text">{statusLineText}</span>
       </div>
 
-      {/* Borderless Transparent Satchel Icon Button */}
+      {/* Borderless Transparent Satchel Button */}
       <button
         className="satchel-transparent-btn"
         onClick={handleSatchelClick}
@@ -212,12 +290,14 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         <div className="scumm-pouch-overlay" onClick={() => setShowInventory(false)}>
           <div className="scumm-pouch-modal" onClick={(e) => e.stopPropagation()}>
             <div className="pouch-header">
-              <span className="pouch-verb">{hoveredItem ? hoveredItem.verbText : "Dhruv's Inventory"}</span>
+              <span className="pouch-verb">
+                {hoveredItem ? ('verbText' in hoveredItem ? hoveredItem.verbText : hoveredItem.label) : "Dhruv's Inventory"}
+              </span>
               <button className="pouch-close-btn" onClick={() => setShowInventory(false)}>&times;</button>
             </div>
 
             <div className="pouch-grid">
-              {INVENTORY_ITEMS.map((item) => (
+              {inventoryList.map((item) => (
                 <div
                   key={item.id}
                   className="pouch-slot"
@@ -234,11 +314,24 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* Background Stage - 100% Clean & Unobstructed */}
+      {/* Background Stage */}
       <div className="parallax-layer layer-stage">
         <div className="cobblestone-path" />
 
-        {/* Target Crosshair Marker ("X Marks the Spot") */}
+        {/* Mystic Hourglass resting naturally on the ground */}
+        {!floorItem.pickedUp && (
+          <div
+            className="ground-collectible-item"
+            style={{ left: `${floorItem.xPercent * 100}%` }}
+            onMouseEnter={() => setHoveredItem(floorItem)}
+            onMouseLeave={() => setHoveredItem(null)}
+            onClick={handleFloorItemClick}
+          >
+            <img src={floorItem.icon} alt={floorItem.label} className="ground-item-img" />
+          </div>
+        )}
+
+        {/* Target Crosshair Marker */}
         {targetMarker && (
           <div
             className="target-crosshair"
@@ -250,16 +343,24 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         )}
       </div>
 
-      {/* Character Render - Fully Visible & Unobscured */}
+      {/* Character Render */}
       {showCharacter && !isInteracting && (
         <div className="character-container">
           <PixelArtCharacter
             position={characterPosition}
             targetX={walkTargetX}
-            onArrival={() => setWalkTargetX(null)}
+            onArrival={handleArrival}
             onPositionUpdate={updateCharacterPosition}
             roadBoundaries={roadBoundariesRef.current}
+            obstacles={[
+              ...(!floorItem.pickedUp ? [{
+                id: 'hourglass',
+                left: window.innerWidth * floorItem.xPercent - 30,
+                right: window.innerWidth * floorItem.xPercent + 30
+              }] : [])
+            ]}
             isOpeningSatchel={isOpeningSatchel}
+            speechText={characterSpeech}
           />
         </div>
       )}

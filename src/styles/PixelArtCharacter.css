@@ -11,119 +11,188 @@
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center bottom;
+    image-rendering: pixelated;
 }
 
-/* Idle animation */
-.idle .character-sprite {
+/* Floating text directly above character head (no bubble background, no box, no border) */
+.floating-character-text {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-12px);
+    color: #ffeb3b;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 1000;
+    animation: floatingTextFade 0.2s ease-out;
+}
+
+@keyframes floatingTextFade {
+    0% { opacity: 0; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(-12px); }
+}
+
+/* Base Idle animation with gentle breathing bob */
+.idle .character-sprite,
+.idle-blink .character-sprite {
     background-image: url('../assets/character-idle.png');
-    animation: idle 0.5s steps(2) infinite;
+    animation: idle-breathe 1.4s ease-in-out infinite alternate;
 }
 
-/* Interact / Pouch Pull animation */
+/* Idle Ponder / Scratch Head */
+.idle-ponder .character-sprite {
+    background-image: url('../assets/interact.png');
+    animation: idle-ponder-sway 0.8s ease-in-out infinite alternate;
+}
+
+/* Idle Fidget */
+.idle-fidget .character-sprite {
+    background-image: url('../assets/character-idle-2.png');
+    animation: idle-fidget-bounce 0.4s ease-in-out infinite alternate;
+}
+
+/* Interact / Reaching animation */
 .interact .character-sprite {
     background-image: url('../assets/interact.png');
+    animation: interact-pulse 0.3s ease-in-out;
 }
 
 /* Jump animation */
 .jump .character-sprite {
     background-image: url('../assets/jmp1.png');
-    animation: jump 0.3s steps(3) forwards;
+    animation: jump-frames 0.35s steps(3) forwards;
 }
 
 /* Move left animation */
 .move-left .character-sprite {
     background-image: url('../assets/move-left1.png');
-    animation: move-left 0.4s steps(4) infinite;
+    animation: move-left-walk 0.35s steps(4) infinite;
 }
 
 /* Move right animation */
 .move-right .character-sprite {
     background-image: url('../assets/move-right1.png');
-    animation: move-right 0.4s steps(4) infinite;
+    animation: move-right-walk 0.35s steps(4) infinite;
 }
 
-/* Facing direction flip for idle/jump/interact sprites */
+/* Facing direction flip */
 .idle.facing-left .character-sprite,
+.idle-ponder.facing-left .character-sprite,
+.idle-fidget.facing-left .character-sprite,
+.idle-blink.facing-left .character-sprite,
 .interact.facing-left .character-sprite,
 .jump.facing-left .character-sprite {
     transform: scaleX(-1);
 }
 
-@keyframes idle {
+/* Keyframe Animations */
+@keyframes idle-breathe {
     0% {
+        transform: translateY(0);
         background-image: url('../assets/character-idle.png');
     }
-    50% {
+    100% {
+        transform: translateY(-2px);
         background-image: url('../assets/character-idle-2.png');
     }
 }
 
-@keyframes jump {
-    0% {
-        background-image: url('../assets/jmp1.png');
-    }
-    33% {
-        background-image: url('../assets/jmp2.png');
-    }
-    66% {
-        background-image: url('../assets/jmp3.png');
-    }
+@keyframes idle-ponder-sway {
+    0% { transform: rotate(-2deg); }
+    100% { transform: rotate(2deg) translateY(-2px); }
 }
 
-@keyframes move-left {
-    0% {
-        background-image: url('../assets/move-left1.png');
-    }
-    25% {
-        background-image: url('../assets/move-left2.png');
-    }
-    50% {
-        background-image: url('../assets/move-left3.png');
-    }
-    75% {
-        background-image: url('../assets/move-left4.png');
-    }
+@keyframes idle-fidget-bounce {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-3px); }
 }
 
-@keyframes move-right {
-    0% {
-        background-image: url('../assets/move-right1.png');
-    }
-    25% {
-        background-image: url('../assets/move-right2.png');
-    }
-    50% {
-        background-image: url('../assets/move-right3.png');
-    }
-    75% {
-        background-image: url('../assets/move-right4.png');
-    }
+@keyframes interact-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.06) translateY(-2px); }
+    100% { transform: scale(1); }
 }
 
-/* Apply animations to character based on state */
-.pixel-art-character.idle {
-    animation: idle-animation 1s infinite ease-in-out;
+@keyframes jump-frames {
+    0% { background-image: url('../assets/jmp1.png'); }
+    33% { background-image: url('../assets/jmp2.png'); }
+    66% { background-image: url('../assets/jmp3.png'); }
 }
 
-.pixel-art-character.jump {
-    animation: jump-animation 1s forwards ease-in-out;
+@keyframes move-left-walk {
+    0% { background-image: url('../assets/move-left1.png'); }
+    25% { background-image: url('../assets/move-left2.png'); }
+    50% { background-image: url('../assets/move-left3.png'); }
+    75% { background-image: url('../assets/move-left4.png'); }
 }
 
-/* Add hover effect for interactive feel */
-.pixel-art-character:hover {
-    cursor: pointer;
-    transform: scale(1.5);
+@keyframes move-right-walk {
+    0% { background-image: url('../assets/move-right1.png'); }
+    25% { background-image: url('../assets/move-right2.png'); }
+    50% { background-image: url('../assets/move-right3.png'); }
+    75% { background-image: url('../assets/move-right4.png'); }
 }
 
-/* Responsive adjustments */
+/* Ponder Thought Bubble '?' */
+.ponder-thought-bubble {
+    position: absolute;
+    top: -18px;
+    right: 48px;
+    background: #ffeb3b;
+    color: #000000;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    font-weight: bold;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #000;
+    animation: bubbleBounce 0.5s ease-out infinite alternate;
+    z-index: 10;
+}
+
+@keyframes bubbleBounce {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-4px); }
+}
+
+/* Particle System (Dust) */
+.character-particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 20;
+}
+
+.particle.dust {
+    position: absolute;
+    background: rgba(200, 180, 140, 0.6);
+    border-radius: 50%;
+    animation: dustFade 0.4s ease-out forwards;
+}
+
+@keyframes dustFade {
+    0% { opacity: 0.6; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-12px) scale(1.6); }
+}
+
 @media (max-width: 768px) {
     .character-sprite {
-        width: 96px;
-        height: 96px;
+        width: 120px;
+        height: 100px;
     }
-    
     .pixel-art-character {
-        width: 96px;
-        height: 96px;
+        width: 120px;
+        height: 100px;
     }
 }
