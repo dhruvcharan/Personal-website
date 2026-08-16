@@ -25,7 +25,7 @@ export const SCHOLAR_DIALOGUE: DialogueTopic = {
     },
     {
       id: "current_role",
-      promptText: "2. What's he upto?",
+      promptText: " What's he upto?",
       characterResponse: "What's he upto",
       npcResponse: [
         " How should I know, that stuff is usually reserved for Linkedin and Github, there should be a phonebook and a code scroll somewhere that should point you to the github and Linkedin pages"
@@ -33,7 +33,7 @@ export const SCHOLAR_DIALOGUE: DialogueTopic = {
     },
     {
       id: "reading",
-      promptText: "3. What books is he currently reading?",
+      promptText: " What books is he currently reading?",
       characterResponse: "I hear he's an avid reader. What's on his reading list?",
       npcResponse: [
         "Do I look like a librarian to you? People usually keep their reading lists on their Now pages, I bet thats where you'd find it",
@@ -43,7 +43,7 @@ export const SCHOLAR_DIALOGUE: DialogueTopic = {
     },
     {
       id: "contact",
-      promptText: "4. How can I reach out to him or see his resume?",
+      promptText: " How can I reach out to him or see his resume?",
       characterResponse: "How can someone get in touch with Dhruv?",
       npcResponse: [
         "Carrier Pigeon or Email"
@@ -52,7 +52,7 @@ export const SCHOLAR_DIALOGUE: DialogueTopic = {
     },
     {
       id: "exit",
-      promptText: "6. Thank you, I'll look around on my own.",
+      promptText: " Thank you, I'll look around on my own.",
       characterResponse: "Thank you, I'll look around on my own.",
       npcResponse: "You've probably seen all there is to, he didn't program a second scene"
     }
