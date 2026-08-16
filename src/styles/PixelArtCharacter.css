@@ -1,64 +1,95 @@
 .pixel-art-character {
     position: absolute;
-    width: 192px;
-    height: 126px;
+    width: 128px;
+    height: 142px;
     transform-origin: bottom center;
 }
 
+/* Ground shadow below character feet */
+.character-ground-shadow {
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 64px;
+    height: 14px;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.jumping .character-ground-shadow {
+    transform: translateX(-50%) scale(0.6);
+    opacity: 0.35;
+}
+
 .character-sprite {
+    position: relative;
     width: 100%;
     height: 100%;
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center bottom;
     image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    z-index: 1;
+    transition: filter 0.2s ease;
 }
 
-/* Floating text directly above character head (no bubble background, no box, no border) */
+/* Floating text directly above character head (pure floating text in free space) */
 .floating-character-text {
     position: absolute;
     bottom: 100%;
     left: 50%;
-    transform: translateX(-50%) translateY(-12px);
+    transform: translateX(-50%) translateY(-14px);
     color: #ffeb3b;
     font-family: 'Press Start 2P', monospace;
     font-size: 11px;
-    line-height: 1.4;
-    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    line-height: 1.5;
+    text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 2px 0 #000, 0 -2px 0 #000, 2px 0 0 #000, -2px 0 0 #000;
     pointer-events: none;
-    white-space: nowrap;
+    white-space: normal;
+    width: max-content;
+    max-width: 320px;
+    text-align: center;
     z-index: 1000;
     animation: floatingTextFade 0.2s ease-out;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
 }
 
 @keyframes floatingTextFade {
-    0% { opacity: 0; transform: translateX(-50%) translateY(0); }
-    100% { opacity: 1; transform: translateX(-50%) translateY(-12px); }
+    0% { opacity: 0; transform: translateX(-50%) translateY(0) scale(0.95); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(-12px) scale(1); }
 }
 
-/* Base Idle animation with gentle breathing bob */
+/* Base Idle animation with smooth pixel breathing */
 .idle .character-sprite,
 .idle-blink .character-sprite {
     background-image: url('../assets/character-idle.png');
-    animation: idle-breathe 1.4s ease-in-out infinite alternate;
+    animation: smooth-idle-breathe 2.2s ease-in-out infinite alternate;
 }
 
 /* Idle Ponder / Scratch Head */
 .idle-ponder .character-sprite {
-    background-image: url('../assets/interact.png');
-    animation: idle-ponder-sway 0.8s ease-in-out infinite alternate;
+    background-image: url('../assets/character-idle-2.png');
+    animation: idle-ponder-subtle 1.6s ease-in-out infinite alternate;
 }
 
 /* Idle Fidget */
 .idle-fidget .character-sprite {
     background-image: url('../assets/character-idle-2.png');
-    animation: idle-fidget-bounce 0.4s ease-in-out infinite alternate;
+    animation: idle-fidget-subtle 1.2s ease-in-out infinite alternate;
 }
 
 /* Interact / Reaching animation */
 .interact .character-sprite {
     background-image: url('../assets/interact.png');
-    animation: interact-pulse 0.3s ease-in-out;
+    animation: smooth-interact 0.4s ease-out;
 }
 
 /* Jump animation */
@@ -70,16 +101,16 @@
 /* Move left animation */
 .move-left .character-sprite {
     background-image: url('../assets/move-left1.png');
-    animation: move-left-walk 0.35s steps(4) infinite;
+    animation: move-left-walk 0.38s steps(4) infinite;
 }
 
 /* Move right animation */
 .move-right .character-sprite {
     background-image: url('../assets/move-right1.png');
-    animation: move-right-walk 0.35s steps(4) infinite;
+    animation: move-right-walk 0.38s steps(4) infinite;
 }
 
-/* Facing direction flip */
+/* Facing direction flip for sprites naturally facing right */
 .idle.facing-left .character-sprite,
 .idle-ponder.facing-left .character-sprite,
 .idle-fidget.facing-left .character-sprite,
@@ -89,32 +120,35 @@
     transform: scaleX(-1);
 }
 
-/* Keyframe Animations */
-@keyframes idle-breathe {
+.facing-right .character-sprite {
+    transform: scaleX(1);
+}
+
+/* Smooth breathing without sprite-flipping artifacts */
+@keyframes smooth-idle-breathe {
     0% {
         transform: translateY(0);
-        background-image: url('../assets/character-idle.png');
     }
     100% {
-        transform: translateY(-2px);
-        background-image: url('../assets/character-idle-2.png');
+        transform: translateY(-3px);
     }
 }
 
-@keyframes idle-ponder-sway {
-    0% { transform: rotate(-2deg); }
-    100% { transform: rotate(2deg) translateY(-2px); }
-}
-
-@keyframes idle-fidget-bounce {
+@keyframes idle-ponder-subtle {
     0% { transform: translateY(0); }
-    100% { transform: translateY(-3px); }
+    100% { transform: translateY(-2px); }
 }
 
-@keyframes interact-pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.06) translateY(-2px); }
-    100% { transform: scale(1); }
+@keyframes idle-fidget-subtle {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+    100% { transform: translateY(0); }
+}
+
+@keyframes smooth-interact {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+    100% { transform: translateY(0); }
 }
 
 @keyframes jump-frames {
@@ -140,21 +174,22 @@
 /* Ponder Thought Bubble '?' */
 .ponder-thought-bubble {
     position: absolute;
-    top: -18px;
-    right: 48px;
+    top: -14px;
+    right: 28px;
     background: #ffeb3b;
     color: #000000;
     font-family: 'Press Start 2P', monospace;
     font-size: 11px;
     font-weight: bold;
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #000;
-    animation: bubbleBounce 0.5s ease-out infinite alternate;
+    border: 2px solid #000;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    animation: bubbleBounce 0.6s ease-out infinite alternate;
     z-index: 10;
 }
 
@@ -163,7 +198,7 @@
     100% { transform: translateY(-4px); }
 }
 
-/* Particle System (Dust) */
+/* Dust Particles */
 .character-particles {
     position: absolute;
     top: 0;
@@ -176,23 +211,19 @@
 
 .particle.dust {
     position: absolute;
-    background: rgba(200, 180, 140, 0.6);
+    background: rgba(210, 190, 150, 0.6);
     border-radius: 50%;
     animation: dustFade 0.4s ease-out forwards;
 }
 
 @keyframes dustFade {
     0% { opacity: 0.6; transform: translateY(0) scale(1); }
-    100% { opacity: 0; transform: translateY(-12px) scale(1.6); }
+    100% { opacity: 0; transform: translateY(-10px) scale(1.4); }
 }
 
 @media (max-width: 768px) {
-    .character-sprite {
-        width: 120px;
-        height: 100px;
-    }
     .pixel-art-character {
-        width: 120px;
-        height: 100px;
+        width: 100px;
+        height: 120px;
     }
 }

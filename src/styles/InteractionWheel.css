@@ -1,0 +1,136 @@
+.interaction-wheel-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1200;
+  background: rgba(0, 0, 0, 0.25);
+  pointer-events: auto;
+}
+
+/* Classic Radial Verb Coin */
+.curse-verb-wheel {
+  position: absolute;
+  width: 132px;
+  height: 132px;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  animation: coinPopIn 0.16s ease-out;
+}
+
+@keyframes coinPopIn {
+  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+/* Central Doubloon Center Emblem */
+.wheel-center-coin {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50px;
+  height: 50px;
+  background: #3e2813;
+  border: 3px solid #8c622d;
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.wheel-skull-teeth {
+  width: 18px;
+  height: 10px;
+  background: #1f1307;
+  border: 1px solid #5a3e1b;
+  border-radius: 2px;
+}
+
+/* Circular Verb Buttons (Vintage Brass / Carved Wood) */
+.verb-btn {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #24170b;
+  border: 2px solid #7c5525;
+  color: #d6a860;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.8);
+  transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+  z-index: 3;
+}
+
+.pixel-verb-icon,
+.verb-svg-icon {
+  width: 26px;
+  height: 26px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(1px 1px 0 #000);
+}
+
+/* Positions for Hand, Eye, Mouth */
+.verb-hand {
+  top: 0;
+  left: 0;
+}
+
+.verb-eye {
+  top: 0;
+  right: 0;
+}
+
+.verb-mouth {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Active & Hover States (Warm Gold Highlight, No Neon Glow) */
+.verb-btn:hover,
+.verb-btn.active {
+  transform: scale(1.12);
+  background: #3d2813;
+  border-color: #f0be5b;
+  color: #ffe699;
+}
+
+.verb-mouth:hover,
+.verb-mouth.active {
+  transform: translateX(-50%) scale(1.12);
+}
+
+/* Hover Tooltip Badge */
+.verb-tooltip-badge {
+  position: absolute;
+  bottom: -20px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: #ffdf80;
+  background: #191007;
+  padding: 3px 6px;
+  border-radius: 3px;
+  border: 1px solid #8c622d;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.verb-btn:hover .verb-tooltip-badge,
+.verb-btn.active .verb-tooltip-badge {
+  opacity: 1;
+  transform: translateY(0);
+}

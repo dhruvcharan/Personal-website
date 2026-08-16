@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import PixelArtCharacter from "./PixelArtCharacter";
 import InteractiveSprite from "./InteractiveSprite";
+import ScholarNpc from "./ScholarNpc";
+import DialogueMenu from "./DialogueMenu";
+import InteractionWheel, { InteractiveTarget, VerbType } from "./InteractionWheel";
+import { DialogueOption } from "../data/dialogueData";
 import "../styles/GameEnvironment.css";
 
 // Assets & Navigation Icons
@@ -70,9 +74,9 @@ interface FloorItem {
 
 const DEFAULT_INVENTORY_ITEMS: InventoryItem[] = [
   { id: 'blog', type: 'blog', label: 'Message Board', verbText: 'Examine Message Board (Go to Blog)', path: '/about', icon: blogIcon },
-  { id: 'github', type: 'github', label: 'Code Scroll', verbText: 'Inspect Code Scroll (Go to GitHub)', path: '/projects', icon: githubIcon },
-  { id: 'linkedin', type: 'linkedin', label: 'Network Journal', verbText: 'Open Network Journal (Go to LinkedIn)', path: '/linkedin', icon: linkedinIcon },
-  { id: 'mail', type: 'mail', label: 'Golden Mailbox', verbText: 'Open Golden Mailbox (Contact / Email)', path: '/mail', icon: mailIcon },
+  { id: 'github', type: 'github', label: 'Scroll', verbText: 'Inspect Scroll (Go to GitHub)', path: '/projects', icon: githubIcon },
+  { id: 'linkedin', type: 'linkedin', label: 'PhoneBook', verbText: 'Open PhoneBook (Go to LinkedIn)', path: '/linkedin', icon: linkedinIcon },
+  { id: 'mail', type: 'mail', label: 'Mailbox', verbText: 'Open Mailbox (Contact / Email)', path: '/mail', icon: mailIcon },
 ];
 
 const getRoadBoundaries = () => {
@@ -83,6 +87,8 @@ const getRoadBoundaries = () => {
   };
 };
 
+const SCHOLAR_X_PERCENT = 0.80;
+
 const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const [showCharacter, setShowCharacter] = useState(true);
   const [isInteracting, setIsInteracting] = useState(false);
@@ -92,14 +98,21 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const [hoveredItem, setHoveredItem] = useState<InventoryItem | FloorItem | { label: string; verbText: string } | null>(null);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [characterSpeech, setCharacterSpeech] = useState<string | null>(null);
+  const [scholarSpeech, setScholarSpeech] = useState<string | null>(null);
+  const [showDialogueMenu, setShowDialogueMenu] = useState(false);
+  const [isSpeakingDialogue, setIsSpeakingDialogue] = useState(false);
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>(DEFAULT_INVENTORY_ITEMS);
+  const [activeWheel, setActiveWheel] = useState<{
+    position: { x: number; y: number };
+    target: InteractiveTarget;
+  } | null>(null);
+  const [wheelHoveredVerbText, setWheelHoveredVerbText] = useState<string | null>(null);
 
-  // Mystic Hourglass resting naturally on the ground floor
   const [floorItem, setFloorItem] = useState<FloorItem>({
     id: 'now',
-    label: 'Mystic Hourglass',
+    label: 'Hourglass',
     icon: nowIcon,
-    xPercent: 0.60,
+    xPercent: 0.55,
     pickedUp: false
   });
 
@@ -114,6 +127,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const characterPositionRef = useRef<Position>(characterPosition);
   const roadBoundariesRef = useRef(getRoadBoundaries());
   const pendingFloorPickupRef = useRef<boolean>(false);
+  const pendingScholarTalkRef = useRef<boolean>(false);
 
   const spriteCollections = {
     github: [githubSprite1, githubSprite2, githubSprite3],
@@ -144,7 +158,8 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       target.closest('.satchel-transparent-btn') ||
       target.closest('.scumm-pouch-modal') ||
       target.closest('.ground-collectible-item') ||
-      target.closest('.pixel-npc-container')
+      target.closest('.scholar-npc-container') ||
+      target.closest('.scumm-dialogue-box')
     ) {
       return;
     }
@@ -155,6 +170,8 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     setTargetMarker({ x: clickX, y: clickY, id: Date.now() });
     setWalkTargetX(clickX);
     pendingFloorPickupRef.current = false;
+    pendingScholarTalkRef.current = false;
+    setShowDialogueMenu(false);
 
     setTimeout(() => {
       setTargetMarker(null);
@@ -171,8 +188,23 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     const stopXPos = currentX < itemRawX ? itemRawX - 60 : itemRawX + 60;
 
     pendingFloorPickupRef.current = true;
+    pendingScholarTalkRef.current = false;
+    setShowDialogueMenu(false);
     setWalkTargetX(stopXPos);
     setTargetMarker({ x: itemRawX, y: window.innerHeight - 175, id: Date.now() });
+  };
+
+  // Click Scholar NPC -> Walk over and open dialogue!
+  const handleScholarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentX = characterPositionRef.current.x;
+    const scholarRawX = window.innerWidth * SCHOLAR_X_PERCENT;
+    const stopXPos = currentX < scholarRawX ? scholarRawX - 85 : scholarRawX + 85;
+
+    pendingScholarTalkRef.current = true;
+    pendingFloorPickupRef.current = false;
+    setWalkTargetX(stopXPos);
+    setTargetMarker({ x: scholarRawX, y: window.innerHeight - 175, id: Date.now() });
   };
 
   // Arrival handler
@@ -183,7 +215,55 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     if (pendingFloorPickupRef.current && !floorItem.pickedUp) {
       pendingFloorPickupRef.current = false;
       executePickUpItem();
+    } else if (pendingScholarTalkRef.current) {
+      pendingScholarTalkRef.current = false;
+      setShowDialogueMenu(true);
     }
+  };
+
+  // Execute dialogue exchange
+  const handleDialogueSelect = (option: DialogueOption) => {
+    setIsSpeakingDialogue(true);
+    setShowDialogueMenu(false);
+
+    // Player speaks
+    const playerText = option.characterResponse || option.promptText.replace(/^[0-9]+\.\s*/, '');
+    setCharacterSpeech(playerText);
+
+    // Scholar replies
+    setTimeout(() => {
+      setCharacterSpeech(null);
+      const reply = Array.isArray(option.npcResponse) ? option.npcResponse.join(' ') : option.npcResponse;
+      setScholarSpeech(reply);
+
+      setTimeout(() => {
+        setScholarSpeech(null);
+        setIsSpeakingDialogue(false);
+
+        if (option.action) {
+          switch (option.action) {
+            case 'open_contact':
+              onNavigate('/mail');
+              break;
+            case 'navigate_now':
+              onNavigate('/now');
+              break;
+            case 'navigate_blog':
+              onNavigate('/about');
+              break;
+            case 'navigate_github':
+              onNavigate('/projects');
+              break;
+            case 'navigate_linkedin':
+              onNavigate('/linkedin');
+              break;
+          }
+        } else if (option.id !== 'exit') {
+          // Re-open dialogue tree after answering question
+          setShowDialogueMenu(true);
+        }
+      }, 3600);
+    }, 2000);
   };
 
   // Pick up floor item action
@@ -206,6 +286,78 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       setInventoryList(prev => [...prev, newItem]);
     }, 650);
   };
+
+  // Open interaction wheel on right click or special verb request
+  const openWheelForTarget = (e: React.MouseEvent, target: InteractiveTarget) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setActiveWheel({
+      position: { x: e.clientX, y: e.clientY },
+      target
+    });
+  };
+
+  const getHourglassTarget = (): InteractiveTarget => ({
+    id: 'hourglass',
+    name: 'Mystic Hourglass',
+    handVerb: 'Pick up Mystic Hourglass',
+    eyeVerb: 'Examine Mystic Hourglass',
+    mouthVerb: 'Taste Mystic Hourglass',
+    onExecuteVerb: (verb: VerbType) => {
+      if (verb === 'hand') {
+        const currentX = characterPositionRef.current.x;
+        const itemRawX = window.innerWidth * floorItem.xPercent;
+        const stopXPos = currentX < itemRawX ? itemRawX - 60 : itemRawX + 60;
+        pendingFloorPickupRef.current = true;
+        setWalkTargetX(stopXPos);
+      } else if (verb === 'eye') {
+        setCharacterSpeech("An ancient hourglass humming with temporal energy. Dhruv's Now page is captured within its sands!");
+        setTimeout(() => {
+          onNavigate('/now');
+        }, 2200);
+      } else if (verb === 'mouth') {
+        setCharacterSpeech("Tastes like temporal displacement... and a bit of warm sand.");
+      }
+    }
+  });
+
+  const getScholarTarget = (): InteractiveTarget => ({
+    id: 'scholar',
+    name: 'Archivist',
+    handVerb: 'Poke Archivist',
+    eyeVerb: 'Examine Archivist',
+    mouthVerb: 'Talk to Archivist',
+    onExecuteVerb: (verb: VerbType) => {
+      if (verb === 'hand') {
+        setCharacterSpeech("He adjusts his spectacles: 'Careful friend, my scroll ink is still wet!'");
+      } else if (verb === 'eye') {
+        setCharacterSpeech("A wise scholar and archivist of the city, carrying ancient records and an illuminated lantern.");
+      } else if (verb === 'mouth') {
+        const currentX = characterPositionRef.current.x;
+        const scholarRawX = window.innerWidth * SCHOLAR_X_PERCENT;
+        const stopXPos = currentX < scholarRawX ? scholarRawX - 85 : scholarRawX + 85;
+        pendingScholarTalkRef.current = true;
+        setWalkTargetX(stopXPos);
+      }
+    }
+  });
+
+  const getSatchelTarget = (): InteractiveTarget => ({
+    id: 'satchel',
+    name: 'Inventory Satchel',
+    handVerb: 'Open Satchel',
+    eyeVerb: 'Examine Satchel',
+    mouthVerb: 'Whisper into Satchel',
+    onExecuteVerb: (verb: VerbType) => {
+      if (verb === 'hand') {
+        setShowInventory(true);
+      } else if (verb === 'eye') {
+        setCharacterSpeech("Dhruv's traveler satchel containing code scrolls, journals, and project dispatches.");
+      } else if (verb === 'mouth') {
+        setCharacterSpeech("It doesn't answer back. Unlike the Luggage, it has no teeth.");
+      }
+    }
+  });
 
   // Satchel Pouch Open / Close
   const handleSatchelClick = (e: React.MouseEvent) => {
@@ -265,13 +417,15 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     }
   };
 
-  const statusLineText = hoveredItem
-    ? ('verbText' in hoveredItem ? hoveredItem.verbText : `Pick up ${hoveredItem.label}`)
-    : "Click floor to walk or open inventory satchel on bottom left";
+  const statusLineText = wheelHoveredVerbText
+    ? wheelHoveredVerbText
+    : hoveredItem
+      ? ('verbText' in hoveredItem ? hoveredItem.verbText : `Pick up ${hoveredItem.label}`)
+      : "Click floor to walk • Right-click objects & NPCs to interact";
 
   return (
     <div className="game-environment" onClick={handleStageClick}>
-      {/* SCUMM Status Plaque at Top Center */}
+      {/* Status Plaque at Top Center */}
       <div className="scumm-top-plaque">
         <span className="plaque-text">{statusLineText}</span>
       </div>
@@ -280,8 +434,9 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       <button
         className="satchel-transparent-btn"
         onClick={handleSatchelClick}
+        onContextMenu={(e) => openWheelForTarget(e, getSatchelTarget())}
       >
-        <span className="satchel-hover-tooltip">INVENTORY</span>
+        <span className="satchel-hover-tooltip">INVENTORY (Right-Click to Interact)</span>
         <img src={pixelSatchel} alt="Inventory Satchel" className="satchel-pixel-img" />
       </button>
 
@@ -326,10 +481,22 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
             onMouseEnter={() => setHoveredItem(floorItem)}
             onMouseLeave={() => setHoveredItem(null)}
             onClick={handleFloorItemClick}
+            onContextMenu={(e) => openWheelForTarget(e, getHourglassTarget())}
           >
             <img src={floorItem.icon} alt={floorItem.label} className="ground-item-img" />
           </div>
         )}
+
+        {/* Interactive Scholar NPC */}
+        <ScholarNpc
+          xPercent={SCHOLAR_X_PERCENT}
+          name="Archivist"
+          onMouseEnter={() => setHoveredItem({ label: "Archivist", verbText: "Talk to Archivist (City Guide)" })}
+          onMouseLeave={() => setHoveredItem(null)}
+          onClick={handleScholarClick}
+          onContextMenu={(e) => openWheelForTarget(e, getScholarTarget())}
+          speechText={scholarSpeech}
+        />
 
         {/* Target Crosshair Marker */}
         {targetMarker && (
@@ -342,6 +509,29 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
           </div>
         )}
       </div>
+
+      {/* Curse of Monkey Island Interaction Wheel Overlay */}
+      {activeWheel && (
+        <InteractionWheel
+          position={activeWheel.position}
+          target={activeWheel.target}
+          onHoverVerb={(verbText) => setWheelHoveredVerbText(verbText)}
+          onSelectVerb={(verb) => activeWheel.target.onExecuteVerb(verb)}
+          onClose={() => {
+            setActiveWheel(null);
+            setWheelHoveredVerbText(null);
+          }}
+        />
+      )}
+
+      {/* Interactive Dialogue Menu Overlay */}
+      {showDialogueMenu && (
+        <DialogueMenu
+          onSelectOption={handleDialogueSelect}
+          onClose={() => setShowDialogueMenu(false)}
+          isSpeaking={isSpeakingDialogue}
+        />
+      )}
 
       {/* Character Render */}
       {showCharacter && !isInteracting && (
@@ -357,7 +547,12 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
                 id: 'hourglass',
                 left: window.innerWidth * floorItem.xPercent - 30,
                 right: window.innerWidth * floorItem.xPercent + 30
-              }] : [])
+              }] : []),
+              {
+                id: 'scholar',
+                left: window.innerWidth * SCHOLAR_X_PERCENT - 55,
+                right: window.innerWidth * SCHOLAR_X_PERCENT + 55
+              }
             ]}
             isOpeningSatchel={isOpeningSatchel}
             speechText={characterSpeech}

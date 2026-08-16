@@ -403,6 +403,9 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
         <div className="ponder-thought-bubble">?</div>
       )}
 
+      {/* Ground shadow beneath character */}
+      <div className="character-ground-shadow" />
+
       {/* Character Sprite Box */}
       <div className="character-sprite" />
 
