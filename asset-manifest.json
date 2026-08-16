@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "/Personal-website/static/css/main.b59fa228.css",
-    "main.js": "/Personal-website/static/js/main.059a6798.js",
+    "main.css": "/Personal-website/static/css/main.6dcdaea3.css",
+    "main.js": "/Personal-website/static/js/main.8678080a.js",
     "static/media/me.jpeg": "/Personal-website/static/media/me.3aa1261b01fd92847916.jpeg",
     "static/media/image_fx_ (3).jpg": "/Personal-website/static/media/image_fx_ (3).b61801ceb12de30c40cb.jpg",
     "static/media/image_fx_ (1).jpg": "/Personal-website/static/media/image_fx_ (1).5929b8b9d37abcbf4d22.jpg",
@@ -41,12 +41,13 @@
     "static/media/mail-interaction2.png": "/Personal-website/static/media/mail-interaction2.c1a2f2e9e9b91f579dd3.png",
     "static/media/github-interaction.png": "/Personal-website/static/media/github-interaction.85a11c289ec576d13f4f.png",
     "static/media/blog-interaction.png": "/Personal-website/static/media/blog-interaction.c7bfd47d159ece0fba8c.png",
+    "static/media/scholar-npc.png": "/Personal-website/static/media/scholar-npc.0b92c79657e3c5ae00af.png",
     "index.html": "/Personal-website/index.html",
-    "main.b59fa228.css.map": "/Personal-website/static/css/main.b59fa228.css.map",
-    "main.059a6798.js.map": "/Personal-website/static/js/main.059a6798.js.map"
+    "main.6dcdaea3.css.map": "/Personal-website/static/css/main.6dcdaea3.css.map",
+    "main.8678080a.js.map": "/Personal-website/static/js/main.8678080a.js.map"
   },
   "entrypoints": [
-    "static/css/main.b59fa228.css",
-    "static/js/main.059a6798.js"
+    "static/css/main.6dcdaea3.css",
+    "static/js/main.8678080a.js"
   ]
 }
