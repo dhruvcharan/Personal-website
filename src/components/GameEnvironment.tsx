@@ -74,8 +74,8 @@ interface FloorItem {
 
 const DEFAULT_INVENTORY_ITEMS: InventoryItem[] = [
   { id: 'blog', type: 'blog', label: 'Message Board', verbText: 'Examine Message Board (Go to Blog)', path: '/about', icon: blogIcon },
-  { id: 'github', type: 'github', label: 'Scroll', verbText: 'Inspect Scroll (Go to GitHub)', path: '/projects', icon: githubIcon },
-  { id: 'linkedin', type: 'linkedin', label: 'PhoneBook', verbText: 'Open PhoneBook (Go to LinkedIn)', path: '/linkedin', icon: linkedinIcon },
+  { id: 'github', type: 'github', label: 'Code Scroll', verbText: 'Inspect Code Scroll (Go to GitHub)', path: '/projects', icon: githubIcon },
+  { id: 'linkedin', type: 'linkedin', label: 'Phonebook', verbText: 'Open Phonebook (Go to LinkedIn)', path: '/linkedin', icon: linkedinIcon },
   { id: 'mail', type: 'mail', label: 'Mailbox', verbText: 'Open Mailbox (Contact / Email)', path: '/mail', icon: mailIcon },
 ];
 
@@ -88,6 +88,7 @@ const getRoadBoundaries = () => {
 };
 
 const SCHOLAR_X_PERCENT = 0.80;
+const PROXIMITY_THRESHOLD = 130;
 
 const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const [showCharacter, setShowCharacter] = useState(true);
@@ -108,6 +109,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   } | null>(null);
   const [wheelHoveredVerbText, setWheelHoveredVerbText] = useState<string | null>(null);
 
+  // Hourglass resting naturally on the ground floor
   const [floorItem, setFloorItem] = useState<FloorItem>({
     id: 'now',
     label: 'Hourglass',
@@ -128,6 +130,17 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const roadBoundariesRef = useRef(getRoadBoundaries());
   const pendingFloorPickupRef = useRef<boolean>(false);
   const pendingScholarTalkRef = useRef<boolean>(false);
+  const dialogueTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const speakAsCharacter = (text: string | null) => {
+    setScholarSpeech(null);
+    setCharacterSpeech(text);
+  };
+
+  const speakAsScholar = (text: string | null) => {
+    setCharacterSpeech(null);
+    setScholarSpeech(text);
+  };
 
   const spriteCollections = {
     github: [githubSprite1, githubSprite2, githubSprite3],
@@ -149,6 +162,12 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const updateCharacterPosition = (pos: Position) => {
     setCharacterPosition(pos);
     characterPositionRef.current = pos;
+
+    // Automatically close dialogue menu if the player walks away from the NPC
+    const scholarRawX = window.innerWidth * SCHOLAR_X_PERCENT;
+    if (showDialogueMenu && Math.abs(pos.x - scholarRawX) > PROXIMITY_THRESHOLD + 40) {
+      setShowDialogueMenu(false);
+    }
   };
 
   // Stage Floor Click -> Character walks to click location
@@ -194,17 +213,26 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     setTargetMarker({ x: itemRawX, y: window.innerHeight - 175, id: Date.now() });
   };
 
-  // Click Scholar NPC -> Walk over and open dialogue!
+  // Click Scholar NPC -> Walk over and only open dialogue upon reaching proximity!
   const handleScholarClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     const currentX = characterPositionRef.current.x;
     const scholarRawX = window.innerWidth * SCHOLAR_X_PERCENT;
-    const stopXPos = currentX < scholarRawX ? scholarRawX - 85 : scholarRawX + 85;
+    const distance = Math.abs(currentX - scholarRawX);
 
-    pendingScholarTalkRef.current = true;
-    pendingFloorPickupRef.current = false;
-    setWalkTargetX(stopXPos);
-    setTargetMarker({ x: scholarRawX, y: window.innerHeight - 175, id: Date.now() });
+    if (distance <= PROXIMITY_THRESHOLD) {
+      // Already right next to NPC
+      setShowDialogueMenu(true);
+      pendingScholarTalkRef.current = false;
+    } else {
+      // Walk over to NPC first
+      const stopXPos = currentX < scholarRawX ? scholarRawX - 85 : scholarRawX + 85;
+      pendingScholarTalkRef.current = true;
+      pendingFloorPickupRef.current = false;
+      setShowDialogueMenu(false);
+      setWalkTargetX(stopXPos);
+      setTargetMarker({ x: scholarRawX, y: window.innerHeight - 175, id: Date.now() });
+    }
   };
 
   // Arrival handler
@@ -212,55 +240,47 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     setWalkTargetX(null);
     setTargetMarker(null);
 
+    const currentX = characterPositionRef.current.x;
+    const scholarRawX = window.innerWidth * SCHOLAR_X_PERCENT;
+
     if (pendingFloorPickupRef.current && !floorItem.pickedUp) {
       pendingFloorPickupRef.current = false;
       executePickUpItem();
     } else if (pendingScholarTalkRef.current) {
       pendingScholarTalkRef.current = false;
-      setShowDialogueMenu(true);
+      // Only open dialogue if within conversational proximity
+      if (Math.abs(currentX - scholarRawX) <= PROXIMITY_THRESHOLD + 40) {
+        setShowDialogueMenu(true);
+      }
     }
   };
 
   // Execute dialogue exchange
   const handleDialogueSelect = (option: DialogueOption) => {
+    if (dialogueTimerRef.current) clearTimeout(dialogueTimerRef.current);
     setIsSpeakingDialogue(true);
     setShowDialogueMenu(false);
 
-    // Player speaks
+    // Player speaks first (guarantees scholar text is cleared)
     const playerText = option.characterResponse || option.promptText.replace(/^[0-9]+\.\s*/, '');
-    setCharacterSpeech(playerText);
+    speakAsCharacter(playerText);
 
-    // Scholar replies
-    setTimeout(() => {
-      setCharacterSpeech(null);
+    // Scholar replies after delay (guarantees player text is cleared)
+    dialogueTimerRef.current = setTimeout(() => {
       const reply = Array.isArray(option.npcResponse) ? option.npcResponse.join(' ') : option.npcResponse;
-      setScholarSpeech(reply);
+      speakAsScholar(reply);
 
-      setTimeout(() => {
+      dialogueTimerRef.current = setTimeout(() => {
         setScholarSpeech(null);
         setIsSpeakingDialogue(false);
 
-        if (option.action) {
-          switch (option.action) {
-            case 'open_contact':
-              onNavigate('/mail');
-              break;
-            case 'navigate_now':
-              onNavigate('/now');
-              break;
-            case 'navigate_blog':
-              onNavigate('/about');
-              break;
-            case 'navigate_github':
-              onNavigate('/projects');
-              break;
-            case 'navigate_linkedin':
-              onNavigate('/linkedin');
-              break;
+        if (option.id !== 'exit') {
+          // Re-open dialogue tree after answering question ONLY if still in close proximity
+          const curX = characterPositionRef.current.x;
+          const schX = window.innerWidth * SCHOLAR_X_PERCENT;
+          if (Math.abs(curX - schX) <= PROXIMITY_THRESHOLD + 40) {
+            setShowDialogueMenu(true);
           }
-        } else if (option.id !== 'exit') {
-          // Re-open dialogue tree after answering question
-          setShowDialogueMenu(true);
         }
       }, 3600);
     }, 2000);
@@ -269,7 +289,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   // Pick up floor item action
   const executePickUpItem = () => {
     setIsOpeningSatchel(true);
-    setCharacterSpeech("Picked up the Mystic Hourglass!");
+    speakAsCharacter("Picked up the Hourglass!");
 
     setTimeout(() => {
       setIsOpeningSatchel(false);
@@ -278,8 +298,8 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       const newItem: InventoryItem = {
         id: 'now',
         type: 'now',
-        label: 'Mystic Hourglass',
-        verbText: 'Look at Mystic Hourglass (Go to Now Page)',
+        label: 'Hourglass',
+        verbText: 'Look at Hourglass (Go to Now Page)',
         path: '/now',
         icon: nowIcon
       };
@@ -299,10 +319,10 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
 
   const getHourglassTarget = (): InteractiveTarget => ({
     id: 'hourglass',
-    name: 'Mystic Hourglass',
-    handVerb: 'Pick up Mystic Hourglass',
-    eyeVerb: 'Examine Mystic Hourglass',
-    mouthVerb: 'Taste Mystic Hourglass',
+    name: 'Hourglass',
+    handVerb: 'Pick up Hourglass',
+    eyeVerb: 'Examine Hourglass',
+    mouthVerb: 'Taste Hourglass',
     onExecuteVerb: (verb: VerbType) => {
       if (verb === 'hand') {
         const currentX = characterPositionRef.current.x;
@@ -311,12 +331,12 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         pendingFloorPickupRef.current = true;
         setWalkTargetX(stopXPos);
       } else if (verb === 'eye') {
-        setCharacterSpeech("An ancient hourglass humming with temporal energy. Dhruv's Now page is captured within its sands!");
+        speakAsCharacter("It says now ");
         setTimeout(() => {
           onNavigate('/now');
         }, 2200);
       } else if (verb === 'mouth') {
-        setCharacterSpeech("Tastes like temporal displacement... and a bit of warm sand.");
+        speakAsCharacter("Hmm I am getting notes of silicon and glass and just the faintest hints of the present moment");
       }
     }
   });
@@ -328,16 +348,32 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     eyeVerb: 'Examine Archivist',
     mouthVerb: 'Talk to Archivist',
     onExecuteVerb: (verb: VerbType) => {
+      const currentX = characterPositionRef.current.x;
+      const scholarRawX = window.innerWidth * SCHOLAR_X_PERCENT;
+      const distance = Math.abs(currentX - scholarRawX);
+
       if (verb === 'hand') {
-        setCharacterSpeech("He adjusts his spectacles: 'Careful friend, my scroll ink is still wet!'");
+        if (distance <= PROXIMITY_THRESHOLD) {
+          speakAsCharacter("Knock it off!");
+        } else {
+          const stopXPos = currentX < scholarRawX ? scholarRawX - 85 : scholarRawX + 85;
+          setWalkTargetX(stopXPos);
+          setTimeout(() => {
+            speakAsCharacter("Knock it off!");
+          }, 1200);
+        }
       } else if (verb === 'eye') {
-        setCharacterSpeech("A wise scholar and archivist of the city, carrying ancient records and an illuminated lantern.");
+        speakAsCharacter("He looks like he knows a thing or two about a thing or two");
       } else if (verb === 'mouth') {
-        const currentX = characterPositionRef.current.x;
-        const scholarRawX = window.innerWidth * SCHOLAR_X_PERCENT;
-        const stopXPos = currentX < scholarRawX ? scholarRawX - 85 : scholarRawX + 85;
-        pendingScholarTalkRef.current = true;
-        setWalkTargetX(stopXPos);
+        if (distance <= PROXIMITY_THRESHOLD) {
+          setShowDialogueMenu(true);
+          pendingScholarTalkRef.current = false;
+        } else {
+          const stopXPos = currentX < scholarRawX ? scholarRawX - 85 : scholarRawX + 85;
+          pendingScholarTalkRef.current = true;
+          setShowDialogueMenu(false);
+          setWalkTargetX(stopXPos);
+        }
       }
     }
   });
@@ -352,9 +388,9 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       if (verb === 'hand') {
         setShowInventory(true);
       } else if (verb === 'eye') {
-        setCharacterSpeech("Dhruv's traveler satchel containing code scrolls, journals, and project dispatches.");
+        speakAsCharacter("A satchel for carrying items if that wasnt obvious ");
       } else if (verb === 'mouth') {
-        setCharacterSpeech("It doesn't answer back. Unlike the Luggage, it has no teeth.");
+        speakAsCharacter("It doesn't answer back, not that I expected it to");
       }
     }
   });
