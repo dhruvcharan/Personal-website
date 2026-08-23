@@ -64,30 +64,23 @@ interface InventoryItem {
   icon: string;
 }
 
-interface FloorItem {
-  id: string;
-  label: string;
-  icon: string;
-  xPercent: number;
-  pickedUp: boolean;
-}
-
 const DEFAULT_INVENTORY_ITEMS: InventoryItem[] = [
   { id: 'blog', type: 'blog', label: 'Message Board', verbText: 'Examine Message Board (Go to Blog)', path: '/about', icon: blogIcon },
   { id: 'github', type: 'github', label: 'Code Scroll', verbText: 'Inspect Code Scroll (Go to GitHub)', path: '/projects', icon: githubIcon },
   { id: 'linkedin', type: 'linkedin', label: 'Phonebook', verbText: 'Open Phonebook (Go to LinkedIn)', path: '/linkedin', icon: linkedinIcon },
   { id: 'mail', type: 'mail', label: 'Mailbox', verbText: 'Open Mailbox (Contact / Email)', path: '/mail', icon: mailIcon },
+  { id: 'now', type: 'now', label: 'Hourglass', verbText: 'Look at Hourglass (Go to Now Page)', path: '/now', icon: nowIcon },
 ];
 
 const getRoadBoundaries = () => {
   const windowWidth = window.innerWidth;
   return {
-    left: windowWidth * 0.05,
-    right: windowWidth * 0.92
+    left: windowWidth * 0.04,
+    right: windowWidth * 0.94
   };
 };
 
-const SCHOLAR_X_PERCENT = 0.80;
+const SCHOLAR_X_PERCENT = 0.81;
 const PROXIMITY_THRESHOLD = 130;
 
 const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
@@ -96,31 +89,22 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const [interactiveObjects, setInteractiveObjects] = useState<InteractiveObject[]>([]);
   const [showInventory, setShowInventory] = useState(false);
   const [isOpeningSatchel, setIsOpeningSatchel] = useState(false);
-  const [hoveredItem, setHoveredItem] = useState<InventoryItem | FloorItem | { label: string; verbText: string } | null>(null);
+  const [hoveredItem, setHoveredItem] = useState<InventoryItem | { label: string; verbText: string } | null>(null);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [characterSpeech, setCharacterSpeech] = useState<string | null>(null);
   const [scholarSpeech, setScholarSpeech] = useState<string | null>(null);
   const [showDialogueMenu, setShowDialogueMenu] = useState(false);
   const [isSpeakingDialogue, setIsSpeakingDialogue] = useState(false);
-  const [inventoryList, setInventoryList] = useState<InventoryItem[]>(DEFAULT_INVENTORY_ITEMS);
+  const [inventoryList] = useState<InventoryItem[]>(DEFAULT_INVENTORY_ITEMS);
   const [activeWheel, setActiveWheel] = useState<{
     position: { x: number; y: number };
     target: InteractiveTarget;
   } | null>(null);
   const [wheelHoveredVerbText, setWheelHoveredVerbText] = useState<string | null>(null);
 
-  // Hourglass resting naturally on the cobblestone floor
-  const [floorItem, setFloorItem] = useState<FloorItem>({
-    id: 'now',
-    label: 'Hourglass',
-    icon: nowIcon,
-    xPercent: 0.55,
-    pickedUp: false
-  });
-
   const [characterPosition, setCharacterPosition] = useState<Position>({
     x: window.innerWidth * 0.2,
-    y: window.innerHeight - 175
+    y: window.innerHeight - 215
   });
 
   const [walkTargetX, setWalkTargetX] = useState<number | null>(null);
@@ -132,14 +116,30 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const pendingScholarTalkRef = useRef<boolean>(false);
   const dialogueTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const characterSpeechTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const speakAsCharacter = (text: string | null) => {
+  const speakAsCharacter = (text: string | null, autoClearDuration: number = 2500) => {
+    if (characterSpeechTimerRef.current) {
+      clearTimeout(characterSpeechTimerRef.current);
+      characterSpeechTimerRef.current = null;
+    }
     setScholarSpeech(null);
     setCharacterSpeech(text);
-    if (text) soundFx.playTalk();
+    if (text) {
+      soundFx.playTalk();
+      if (autoClearDuration > 0) {
+        characterSpeechTimerRef.current = setTimeout(() => {
+          setCharacterSpeech(null);
+        }, autoClearDuration);
+      }
+    }
   };
 
   const speakAsScholar = (text: string | null) => {
+    if (characterSpeechTimerRef.current) {
+      clearTimeout(characterSpeechTimerRef.current);
+      characterSpeechTimerRef.current = null;
+    }
     setCharacterSpeech(null);
     setScholarSpeech(text);
     if (text) soundFx.playTalk();
@@ -203,24 +203,6 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     }, 850);
   };
 
-  // Click floor collectible item -> Walk to item and pick it up!
-  const handleFloorItemClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (floorItem.pickedUp) return;
-
-    soundFx.playFootstep();
-    const currentX = characterPositionRef.current.x;
-    const itemRawX = window.innerWidth * floorItem.xPercent;
-    const stopXPos = currentX < itemRawX ? itemRawX - 60 : itemRawX + 60;
-
-    pendingFloorPickupRef.current = true;
-    pendingScholarTalkRef.current = false;
-    setShowDialogueMenu(false);
-    setActiveWheel(null);
-    setWalkTargetX(stopXPos);
-    setTargetMarker({ x: itemRawX, y: window.innerHeight - 175, id: Date.now() });
-  };
-
   // Click Scholar NPC -> Walk over and only open dialogue upon reaching proximity!
   const handleScholarClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -235,11 +217,10 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       soundFx.playFootstep();
       const stopXPos = currentX < scholarRawX ? scholarRawX - 85 : scholarRawX + 85;
       pendingScholarTalkRef.current = true;
-      pendingFloorPickupRef.current = false;
       setShowDialogueMenu(false);
       setActiveWheel(null);
       setWalkTargetX(stopXPos);
-      setTargetMarker({ x: scholarRawX, y: window.innerHeight - 175, id: Date.now() });
+      setTargetMarker({ x: scholarRawX, y: window.innerHeight - 215, id: Date.now() });
     }
   };
 
@@ -251,10 +232,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     const currentX = characterPositionRef.current.x;
     const scholarRawX = window.innerWidth * SCHOLAR_X_PERCENT;
 
-    if (pendingFloorPickupRef.current && !floorItem.pickedUp) {
-      pendingFloorPickupRef.current = false;
-      executePickUpItem();
-    } else if (pendingScholarTalkRef.current) {
+    if (pendingScholarTalkRef.current) {
       pendingScholarTalkRef.current = false;
       if (Math.abs(currentX - scholarRawX) <= PROXIMITY_THRESHOLD + 40) {
         setShowDialogueMenu(true);
@@ -262,7 +240,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     }
   };
 
-  // Execute dialogue exchange
+  // Execute dialogue exchange (sequential banter: PC talks -> text clears -> NPC replies)
   const handleDialogueSelect = (option: DialogueOption) => {
     if (dialogueTimerRef.current) clearTimeout(dialogueTimerRef.current);
     setIsSpeakingDialogue(true);
@@ -271,55 +249,30 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     const playerText = option.characterResponse || option.promptText.replace(/^[0-9]+\.\s*/, '');
     speakAsCharacter(playerText);
 
+    // Step 1: Wait for PC text duration, then clear PC text
     dialogueTimerRef.current = setTimeout(() => {
-      const reply = Array.isArray(option.npcResponse) ? option.npcResponse.join(' ') : option.npcResponse;
-      speakAsScholar(reply);
+      setCharacterSpeech(null);
 
+      // Step 2: Brief pause, then show Archivist reply
       dialogueTimerRef.current = setTimeout(() => {
-        setScholarSpeech(null);
-        setIsSpeakingDialogue(false);
+        const reply = Array.isArray(option.npcResponse) ? option.npcResponse.join(' ') : option.npcResponse;
+        speakAsScholar(reply);
 
-        if (option.action) {
-          if (option.action === 'navigate_now') onNavigate('/now');
-          else if (option.action === 'open_contact') onNavigate('/mail');
-          else if (option.action === 'navigate_blog') onNavigate('/about');
-          return;
-        }
+        // Step 3: Wait for Archivist text duration, then clear and re-open dialogue menu
+        dialogueTimerRef.current = setTimeout(() => {
+          setScholarSpeech(null);
+          setIsSpeakingDialogue(false);
 
-        if (option.id !== 'exit') {
-          const curX = characterPositionRef.current.x;
-          const schX = window.innerWidth * SCHOLAR_X_PERCENT;
-          if (Math.abs(curX - schX) <= PROXIMITY_THRESHOLD + 40) {
-            setShowDialogueMenu(true);
+          if (option.id !== 'exit') {
+            const curX = characterPositionRef.current.x;
+            const schX = window.innerWidth * SCHOLAR_X_PERCENT;
+            if (Math.abs(curX - schX) <= PROXIMITY_THRESHOLD + 40) {
+              setShowDialogueMenu(true);
+            }
           }
-        }
-      }, 3400);
-    }, 1800);
-  };
-
-  // Pick up floor item action
-  const executePickUpItem = () => {
-    soundFx.playMagic();
-    setIsOpeningSatchel(true);
-    speakAsCharacter("Picked up the Hourglass!");
-
-    setTimeout(() => {
-      setIsOpeningSatchel(false);
-      setFloorItem(prev => ({ ...prev, pickedUp: true }));
-
-      const newItem: InventoryItem = {
-        id: 'now',
-        type: 'now',
-        label: 'Hourglass',
-        verbText: 'Look at Hourglass (Go to Now Page)',
-        path: '/now',
-        icon: nowIcon
-      };
-      setInventoryList(prev => {
-        if (prev.some(item => item.id === 'now')) return prev;
-        return [...prev, newItem];
-      });
-    }, 650);
+        }, 3400);
+      }, 350);
+    }, 2400);
   };
 
   // Open interaction wheel on right click or touch long-press
@@ -349,29 +302,92 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     }
   };
 
-  const getHourglassTarget = (): InteractiveTarget => ({
-    id: 'hourglass',
-    name: 'Hourglass',
-    handVerb: 'Pick up Hourglass',
-    eyeVerb: 'Examine Hourglass',
-    mouthVerb: 'Taste Hourglass',
-    onExecuteVerb: (verb: VerbType) => {
-      if (verb === 'hand') {
-        const currentX = characterPositionRef.current.x;
-        const itemRawX = window.innerWidth * floorItem.xPercent;
-        const stopXPos = currentX < itemRawX ? itemRawX - 60 : itemRawX + 60;
-        pendingFloorPickupRef.current = true;
-        setWalkTargetX(stopXPos);
-      } else if (verb === 'eye') {
-        speakAsCharacter("It says now ");
-        setTimeout(() => {
-          onNavigate('/now');
-        }, 2200);
-      } else if (verb === 'mouth') {
-        speakAsCharacter("Hmm I am getting notes of silicon and glass and just the faintest hints of the present moment");
-      }
+  // Contextual SCUMM Verb Wheel targets for each inventory item
+  const getInventoryItemTarget = (item: InventoryItem): InteractiveTarget => {
+    switch (item.id) {
+      case 'blog':
+        return {
+          id: 'blog',
+          name: 'Message Board',
+          handVerb: 'Examine Notices (Go to Blog)',
+          eyeVerb: 'Read Town Decrees',
+          mouthVerb: 'Lick Parchment',
+          onExecuteVerb: (verb: VerbType) => {
+            setShowInventory(false);
+            if (verb === 'hand' || verb === 'eye') {
+              executeNavigationInteraction('blog', '/about');
+            } else if (verb === 'mouth') {
+              speakAsCharacter("Tastes like aged oak bark and bureaucratic decrees.");
+            }
+          }
+        };
+      case 'github':
+        return {
+          id: 'github',
+          name: 'Code Scroll',
+          handVerb: 'Inspect Code Scroll (Go to GitHub)',
+          eyeVerb: 'Study Ancient Algorithms',
+          mouthVerb: 'Recite Incantation',
+          onExecuteVerb: (verb: VerbType) => {
+            setShowInventory(false);
+            if (verb === 'hand' || verb === 'eye') {
+              executeNavigationInteraction('github', '/projects');
+            } else if (verb === 'mouth') {
+              speakAsCharacter("git commit -m 'Lumos' - the incantation resonates!");
+            }
+          }
+        };
+      case 'linkedin':
+        return {
+          id: 'linkedin',
+          name: 'Guild Phonebook',
+          handVerb: 'Open Phonebook (Go to LinkedIn)',
+          eyeVerb: 'Browse Guild Directory',
+          mouthVerb: 'Call Contact',
+          onExecuteVerb: (verb: VerbType) => {
+            setShowInventory(false);
+            if (verb === 'hand' || verb === 'eye') {
+              executeNavigationInteraction('linkedin', '/linkedin');
+            } else if (verb === 'mouth') {
+              speakAsCharacter("Connecting to the guild network...");
+            }
+          }
+        };
+      case 'mail':
+        return {
+          id: 'mail',
+          name: 'Enchanted Mailbox',
+          handVerb: 'Open Mailbox (Send Email)',
+          eyeVerb: 'Inspect Brass Latch',
+          mouthVerb: 'Whisper Message',
+          onExecuteVerb: (verb: VerbType) => {
+            setShowInventory(false);
+            if (verb === 'hand' || verb === 'eye') {
+              executeNavigationInteraction('mail', '/mail');
+            } else if (verb === 'mouth') {
+              speakAsCharacter("Your whispered words turn into an envelope of stardust.");
+            }
+          }
+        };
+      case 'now':
+      default:
+        return {
+          id: 'now',
+          name: 'Hourglass',
+          handVerb: 'Inspect Timeline (Go to Now)',
+          eyeVerb: 'Watch the Sands of Time',
+          mouthVerb: 'Taste Sand of Time',
+          onExecuteVerb: (verb: VerbType) => {
+            setShowInventory(false);
+            if (verb === 'hand' || verb === 'eye') {
+              executeNavigationInteraction('now', '/now');
+            } else if (verb === 'mouth') {
+              speakAsCharacter("Hmm, notes of silicon, glass, and the fleeting present moment.");
+            }
+          }
+        };
     }
-  });
+  };
 
   const getScholarTarget = (): InteractiveTarget => ({
     id: 'scholar',
@@ -395,7 +411,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
           }, 1200);
         }
       } else if (verb === 'eye') {
-        speakAsCharacter("He looks like he knows a thing or two about a thing or two");
+        speakAsCharacter("He looks like he knows a thing or two about a thing or two.");
       } else if (verb === 'mouth') {
         if (distance <= PROXIMITY_THRESHOLD) {
           setShowDialogueMenu(true);
@@ -421,9 +437,9 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         soundFx.playSatchel();
         setShowInventory(true);
       } else if (verb === 'eye') {
-        speakAsCharacter("A satchel for carrying items if that wasnt obvious ");
+        speakAsCharacter("A satchel for carrying relics, scrolls, and oddities.");
       } else if (verb === 'mouth') {
-        speakAsCharacter("It doesn't answer back, not that I expected it to");
+        speakAsCharacter("It doesn't answer back, not that I expected it to.");
       }
     }
   });
@@ -492,8 +508,8 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const statusLineText = wheelHoveredVerbText
     ? wheelHoveredVerbText
     : hoveredItem
-      ? ('verbText' in hoveredItem ? hoveredItem.verbText : `Pick up ${hoveredItem.label}`)
-      : "Click floor to walk • Right-click objects & NPCs to interact";
+      ? hoveredItem.verbText
+      : "Click floor to walk • Right-click items & NPCs to interact";
 
   return (
     <div className="game-environment" onClick={handleStageClick}>
@@ -530,7 +546,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
           <div className="scumm-pouch-modal" onClick={(e) => e.stopPropagation()}>
             <div className="pouch-header">
               <span className="pouch-verb">
-                {hoveredItem ? ('verbText' in hoveredItem ? hoveredItem.verbText : hoveredItem.label) : "Dhruv's Inventory"}
+                {hoveredItem ? hoveredItem.verbText : "Inventory (Right-Click to Interact)"}
               </span>
               <button
                 className="pouch-close-btn"
@@ -551,6 +567,13 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
                   onMouseEnter={() => setHoveredItem(item)}
                   onMouseLeave={() => setHoveredItem(null)}
                   onClick={() => handleUseInventoryItem(item)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openWheelForTarget(e.clientX, e.clientY, getInventoryItemTarget(item));
+                  }}
+                  onTouchStart={(e) => handleTouchStart(() => getInventoryItemTarget(item), e)}
+                  onTouchEnd={handleTouchEnd}
                 >
                   <img src={item.icon} alt={item.label} className="pouch-item-img" />
                   <span className="pouch-item-name">{item.label}</span>
@@ -564,26 +587,6 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       {/* Background Stage */}
       <div className="parallax-layer layer-stage">
         <div className="cobblestone-path" />
-
-        {/* Mystic Hourglass resting naturally on the ground */}
-        {!floorItem.pickedUp && (
-          <div
-            className="ground-collectible-item"
-            style={{ left: `${floorItem.xPercent * 100}%` }}
-            onMouseEnter={() => setHoveredItem(floorItem)}
-            onMouseLeave={() => setHoveredItem(null)}
-            onClick={handleFloorItemClick}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              openWheelForTarget(e.clientX, e.clientY, getHourglassTarget());
-            }}
-            onTouchStart={(e) => handleTouchStart(getHourglassTarget, e)}
-            onTouchEnd={handleTouchEnd}
-          >
-            <img src={floorItem.icon} alt={floorItem.label} className="ground-item-img" />
-          </div>
-        )}
 
         {/* Interactive Scholar NPC */}
         <ScholarNpc
@@ -647,15 +650,10 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
             onPositionUpdate={updateCharacterPosition}
             roadBoundaries={roadBoundariesRef.current}
             obstacles={[
-              ...(!floorItem.pickedUp ? [{
-                id: 'hourglass',
-                left: window.innerWidth * floorItem.xPercent - 30,
-                right: window.innerWidth * floorItem.xPercent + 30
-              }] : []),
               {
                 id: 'scholar',
-                left: window.innerWidth * SCHOLAR_X_PERCENT - 55,
-                right: window.innerWidth * SCHOLAR_X_PERCENT + 55
+                left: window.innerWidth * SCHOLAR_X_PERCENT - 45,
+                right: window.innerWidth * SCHOLAR_X_PERCENT + 45
               }
             ]}
             isOpeningSatchel={isOpeningSatchel}

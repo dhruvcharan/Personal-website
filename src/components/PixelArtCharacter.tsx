@@ -46,7 +46,7 @@ interface Particle {
 const MOVE_SPEED = 6;
 const JUMP_HEIGHT = 80;
 const JUMP_DURATION = 1050;
-const getBaseYPosition = () => window.innerHeight - 175;
+const getBaseYPosition = () => window.innerHeight - 215;
 
 const easeOutQuad = (t: number): number => -t * (t - 2);
 const easeInQuad = (t: number): number => t * t;
@@ -131,17 +131,10 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
     }
   }, [isOpeningSatchel, isCastingWand]);
 
-  // Floating text timer
+  // Floating text sync with parent
   useEffect(() => {
-    if (speechText) {
-      setDisplayedSpeech(speechText);
-      const timer = setTimeout(() => {
-        setDisplayedSpeech(null);
-        if (onSpeechComplete) onSpeechComplete();
-      }, 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [speechText, onSpeechComplete]);
+    setDisplayedSpeech(speechText || null);
+  }, [speechText]);
 
   // Subtle Idle Flavor Loop
   useEffect(() => {

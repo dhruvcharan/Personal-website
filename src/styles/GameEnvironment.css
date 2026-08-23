@@ -6,7 +6,7 @@
   height: 100vh;
   overflow: hidden;
   margin: 0;
-  background-image: url('../assets/image_fx_\ \(3\).jpg');
+  background-image: url('../assets/adventure_town_stage.jpg');
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center bottom;
@@ -18,6 +18,7 @@
 .game-environment a,
 .game-environment button,
 .game-environment .ground-collectible-item,
+.game-environment .world-fixture-station,
 .game-environment .scholar-npc-container {
   cursor: url('../assets/wand.png'), pointer !important;
 }
@@ -86,32 +87,104 @@
   left: 0;
   width: 100%;
   height: 100px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.4) 100%);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.35) 100%);
+  pointer-events: none;
 }
 
-/* Collectible item resting naturally on the ground with tilt & ground shadow */
-.ground-collectible-item {
+/* Ground Light Pools */
+.light-pool-amber {
   position: absolute;
-  bottom: 35px;
-  transform: translateX(-50%) rotate(-18deg);
-  transform-origin: bottom center;
-  z-index: 8;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255, 190, 80, 0.32) 0%, rgba(255, 140, 30, 0.12) 50%, rgba(0, 0, 0, 0) 75%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  z-index: 2;
+  animation: lightPoolFlicker 3s infinite alternate ease-in-out;
+}
+
+@keyframes lightPoolFlicker {
+  0% { opacity: 0.8; transform: translateX(-50%) scale(0.98); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.02); }
+  100% { opacity: 0.85; transform: translateX(-50%) scale(1); }
+}
+
+/* World Fixture Stations */
+.world-fixture-station {
+  position: absolute;
+  transform: translateX(-50%);
+  z-index: 7;
   cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: bottom center;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.2s ease;
 }
 
-.ground-collectible-item:hover {
-  transform: translateX(-50%) rotate(-10deg) translateY(-3px) scale(1.1);
-  filter: drop-shadow(0 0 10px rgba(255, 223, 128, 0.8));
+.world-fixture-station:hover {
+  transform: translateX(-50%) scale(1.05) translateY(-3px);
+  filter: drop-shadow(0 0 12px rgba(255, 223, 128, 0.75));
 }
 
-.ground-item-img {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
+.fixture-hover-tag {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ffdf80;
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.world-fixture-station:hover .fixture-hover-tag {
+  opacity: 1;
+}
+
+.fixture-img {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.9));
+}
+
+/* Floor Hourglass Station */
+.fixture-hourglass-stoop {
+  bottom: 92px;
+  width: 64px;
+  height: 64px;
+  transform: translateX(-50%) rotate(-9deg) skewX(-4deg);
+  transform-origin: bottom center;
+}
+
+.fixture-hourglass-stoop:hover {
+  transform: translateX(-50%) rotate(-4deg) scale(1.08) translateY(-4px);
+  filter: drop-shadow(0 0 12px rgba(0, 240, 255, 0.85));
+}
+
+.fixture-img.hourglass-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.9));
+}
+
+/* Contact Shadows */
+.fixture-contact-shadow {
+  position: absolute;
+  bottom: -1px;
+  left: 48%;
+  transform: translateX(-50%) rotate(-6deg);
+  width: 85%;
+  height: 10px;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0) 75%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
 }
 
 /* Borderless Transparent Satchel Icon Button */
