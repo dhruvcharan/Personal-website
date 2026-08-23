@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import GameEnvironment from './components/GameEnvironment';
-import './App.css';
 import NowPage from './components/NowPage';
 import BlogListPage from './components/BlogListPage';
 import ContactModal from './components/ContactModal';
 import BlogPostPage from './components/BlogPostPage';
+import './App.css';
 
 function App() {
   const [showContactModal, setShowContactModal] = useState(false);
@@ -14,17 +14,13 @@ function App() {
 
   useEffect(() => {
     const handlePopState = () => {
-      console.log('Back button pressed, returning to home');
       setShowContactModal(false);
       setCurrentPage('home');
       setSelectedPostSlug(null);
     };
 
     window.addEventListener('popstate', handlePopState);
-    
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   const openContactModal = () => {
@@ -37,7 +33,6 @@ function App() {
   const handleNavigate = (path: string) => {
     if (isNavigating) return;
     
-    console.log('Navigating to:', path);
     setIsNavigating(true);
     
     if (path === '/mail') {
@@ -50,7 +45,6 @@ function App() {
       switch(path) {
         case '/about':
           setCurrentPage('blogList');
-          // Add history entry when navigating to blog list
           window.history.pushState({ page: 'blogList' }, '', '');
           break;
         case '/projects':
@@ -66,12 +60,11 @@ function App() {
           window.history.pushState({ page: 'now' }, '', '');
           break;
         default:
-          console.log('Unknown path:', path);
           setCurrentPage('home');
       }
       
       setIsNavigating(false);
-    }, 700); 
+    }, 600); 
   };
 
   const handleBlogPostClick = (slug: string) => {
@@ -95,14 +88,7 @@ function App() {
 
   return (
     <div className="App">
-      {currentPage === 'home' && (
-        <>
-          <div className="game-header-banner">
-            <h1 className="game-title">Dhruv Charan</h1>
-          </div>
-          <GameEnvironment onNavigate={handleNavigate} />
-        </>
-      )}
+      <GameEnvironment onNavigate={handleNavigate} />
       
       {currentPage === 'now' && (
         <NowPage onBackClick={closeSubPage} />

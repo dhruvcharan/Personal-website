@@ -5,6 +5,7 @@ import ScholarNpc from "./ScholarNpc";
 import DialogueMenu from "./DialogueMenu";
 import InteractionWheel, { InteractiveTarget, VerbType } from "./InteractionWheel";
 import { DialogueOption } from "../data/dialogueData";
+import { soundFx } from "../utils/audio";
 import "../styles/GameEnvironment.css";
 
 // Assets & Navigation Icons
@@ -61,7 +62,6 @@ interface InventoryItem {
   verbText: string;
   path: string;
   icon: string;
-  description?: string;
 }
 
 interface FloorItem {
@@ -109,7 +109,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   } | null>(null);
   const [wheelHoveredVerbText, setWheelHoveredVerbText] = useState<string | null>(null);
 
-  // Hourglass resting naturally on the ground floor
+  // Hourglass resting naturally on the cobblestone floor
   const [floorItem, setFloorItem] = useState<FloorItem>({
     id: 'now',
     label: 'Hourglass',
@@ -131,15 +131,18 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const pendingFloorPickupRef = useRef<boolean>(false);
   const pendingScholarTalkRef = useRef<boolean>(false);
   const dialogueTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const speakAsCharacter = (text: string | null) => {
     setScholarSpeech(null);
     setCharacterSpeech(text);
+    if (text) soundFx.playTalk();
   };
 
   const speakAsScholar = (text: string | null) => {
     setCharacterSpeech(null);
     setScholarSpeech(text);
+    if (text) soundFx.playTalk();
   };
 
   const spriteCollections = {
@@ -178,11 +181,13 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       target.closest('.scumm-pouch-modal') ||
       target.closest('.ground-collectible-item') ||
       target.closest('.scholar-npc-container') ||
-      target.closest('.scumm-dialogue-box')
+      target.closest('.scumm-dialogue-box') ||
+      target.closest('.curse-verb-wheel')
     ) {
       return;
     }
 
+    soundFx.playFootstep();
     const clickX = e.clientX;
     const clickY = Math.min(e.clientY, window.innerHeight - 140);
 
@@ -191,10 +196,11 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     pendingFloorPickupRef.current = false;
     pendingScholarTalkRef.current = false;
     setShowDialogueMenu(false);
+    setActiveWheel(null);
 
     setTimeout(() => {
       setTargetMarker(null);
-    }, 900);
+    }, 850);
   };
 
   // Click floor collectible item -> Walk to item and pick it up!
@@ -202,6 +208,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     e.stopPropagation();
     if (floorItem.pickedUp) return;
 
+    soundFx.playFootstep();
     const currentX = characterPositionRef.current.x;
     const itemRawX = window.innerWidth * floorItem.xPercent;
     const stopXPos = currentX < itemRawX ? itemRawX - 60 : itemRawX + 60;
@@ -209,6 +216,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     pendingFloorPickupRef.current = true;
     pendingScholarTalkRef.current = false;
     setShowDialogueMenu(false);
+    setActiveWheel(null);
     setWalkTargetX(stopXPos);
     setTargetMarker({ x: itemRawX, y: window.innerHeight - 175, id: Date.now() });
   };
@@ -221,15 +229,15 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     const distance = Math.abs(currentX - scholarRawX);
 
     if (distance <= PROXIMITY_THRESHOLD) {
-      // Already right next to NPC
       setShowDialogueMenu(true);
       pendingScholarTalkRef.current = false;
     } else {
-      // Walk over to NPC first
+      soundFx.playFootstep();
       const stopXPos = currentX < scholarRawX ? scholarRawX - 85 : scholarRawX + 85;
       pendingScholarTalkRef.current = true;
       pendingFloorPickupRef.current = false;
       setShowDialogueMenu(false);
+      setActiveWheel(null);
       setWalkTargetX(stopXPos);
       setTargetMarker({ x: scholarRawX, y: window.innerHeight - 175, id: Date.now() });
     }
@@ -248,7 +256,6 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       executePickUpItem();
     } else if (pendingScholarTalkRef.current) {
       pendingScholarTalkRef.current = false;
-      // Only open dialogue if within conversational proximity
       if (Math.abs(currentX - scholarRawX) <= PROXIMITY_THRESHOLD + 40) {
         setShowDialogueMenu(true);
       }
@@ -261,11 +268,9 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     setIsSpeakingDialogue(true);
     setShowDialogueMenu(false);
 
-    // Player speaks first (guarantees scholar text is cleared)
     const playerText = option.characterResponse || option.promptText.replace(/^[0-9]+\.\s*/, '');
     speakAsCharacter(playerText);
 
-    // Scholar replies after delay (guarantees player text is cleared)
     dialogueTimerRef.current = setTimeout(() => {
       const reply = Array.isArray(option.npcResponse) ? option.npcResponse.join(' ') : option.npcResponse;
       speakAsScholar(reply);
@@ -274,20 +279,27 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         setScholarSpeech(null);
         setIsSpeakingDialogue(false);
 
+        if (option.action) {
+          if (option.action === 'navigate_now') onNavigate('/now');
+          else if (option.action === 'open_contact') onNavigate('/mail');
+          else if (option.action === 'navigate_blog') onNavigate('/about');
+          return;
+        }
+
         if (option.id !== 'exit') {
-          // Re-open dialogue tree after answering question ONLY if still in close proximity
           const curX = characterPositionRef.current.x;
           const schX = window.innerWidth * SCHOLAR_X_PERCENT;
           if (Math.abs(curX - schX) <= PROXIMITY_THRESHOLD + 40) {
             setShowDialogueMenu(true);
           }
         }
-      }, 3600);
-    }, 2000);
+      }, 3400);
+    }, 1800);
   };
 
   // Pick up floor item action
   const executePickUpItem = () => {
+    soundFx.playMagic();
     setIsOpeningSatchel(true);
     speakAsCharacter("Picked up the Hourglass!");
 
@@ -303,18 +315,38 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         path: '/now',
         icon: nowIcon
       };
-      setInventoryList(prev => [...prev, newItem]);
+      setInventoryList(prev => {
+        if (prev.some(item => item.id === 'now')) return prev;
+        return [...prev, newItem];
+      });
     }, 650);
   };
 
-  // Open interaction wheel on right click or special verb request
-  const openWheelForTarget = (e: React.MouseEvent, target: InteractiveTarget) => {
-    e.preventDefault();
-    e.stopPropagation();
+  // Open interaction wheel on right click or touch long-press
+  const openWheelForTarget = (clientX: number, clientY: number, target: InteractiveTarget) => {
+    soundFx.playClick();
     setActiveWheel({
-      position: { x: e.clientX, y: e.clientY },
+      position: { x: clientX, y: clientY },
       target
     });
+  };
+
+  const handleTouchStart = (targetGetter: () => InteractiveTarget, e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const clientX = touch.clientX;
+    const clientY = touch.clientY;
+
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+    touchTimerRef.current = setTimeout(() => {
+      openWheelForTarget(clientX, clientY, targetGetter());
+    }, 380);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
   };
 
   const getHourglassTarget = (): InteractiveTarget => ({
@@ -386,6 +418,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     mouthVerb: 'Whisper into Satchel',
     onExecuteVerb: (verb: VerbType) => {
       if (verb === 'hand') {
+        soundFx.playSatchel();
         setShowInventory(true);
       } else if (verb === 'eye') {
         speakAsCharacter("A satchel for carrying items if that wasnt obvious ");
@@ -398,6 +431,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   // Satchel Pouch Open / Close
   const handleSatchelClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    soundFx.playSatchel();
     if (showInventory) {
       setShowInventory(false);
       setIsOpeningSatchel(false);
@@ -408,10 +442,11 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     setTimeout(() => {
       setIsOpeningSatchel(false);
       setShowInventory(true);
-    }, 300);
+    }, 250);
   };
 
   const handleUseInventoryItem = (item: InventoryItem) => {
+    soundFx.playClick();
     setShowInventory(false);
     if (isInteracting) return;
 
@@ -422,6 +457,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
 
   const executeNavigationInteraction = (type: InteractiveObject['type'], path: string) => {
     setActivePath(path);
+    soundFx.playMagic();
     const spritePaths = spriteCollections[type] || [];
     const currentPos = {
       x: characterPositionRef.current.x,
@@ -461,7 +497,12 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
 
   return (
     <div className="game-environment" onClick={handleStageClick}>
-      {/* Status Plaque at Top Center */}
+      {/* Title Header Banner */}
+      <div className="game-header-banner">
+        <h1 className="game-title">Dhruv Charan</h1>
+      </div>
+
+      {/* SCUMM Status Plaque at Top Center */}
       <div className="scumm-top-plaque">
         <span className="plaque-text">{statusLineText}</span>
       </div>
@@ -470,7 +511,14 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       <button
         className="satchel-transparent-btn"
         onClick={handleSatchelClick}
-        onContextMenu={(e) => openWheelForTarget(e, getSatchelTarget())}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openWheelForTarget(e.clientX, e.clientY, getSatchelTarget());
+        }}
+        onTouchStart={(e) => handleTouchStart(getSatchelTarget, e)}
+        onTouchEnd={handleTouchEnd}
+        aria-label="Open Satchel Inventory"
       >
         <span className="satchel-hover-tooltip">INVENTORY (Right-Click to Interact)</span>
         <img src={pixelSatchel} alt="Inventory Satchel" className="satchel-pixel-img" />
@@ -484,7 +532,15 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
               <span className="pouch-verb">
                 {hoveredItem ? ('verbText' in hoveredItem ? hoveredItem.verbText : hoveredItem.label) : "Dhruv's Inventory"}
               </span>
-              <button className="pouch-close-btn" onClick={() => setShowInventory(false)}>&times;</button>
+              <button
+                className="pouch-close-btn"
+                onClick={() => {
+                  soundFx.playClick();
+                  setShowInventory(false);
+                }}
+              >
+                &times;
+              </button>
             </div>
 
             <div className="pouch-grid">
@@ -517,7 +573,13 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
             onMouseEnter={() => setHoveredItem(floorItem)}
             onMouseLeave={() => setHoveredItem(null)}
             onClick={handleFloorItemClick}
-            onContextMenu={(e) => openWheelForTarget(e, getHourglassTarget())}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openWheelForTarget(e.clientX, e.clientY, getHourglassTarget());
+            }}
+            onTouchStart={(e) => handleTouchStart(getHourglassTarget, e)}
+            onTouchEnd={handleTouchEnd}
           >
             <img src={floorItem.icon} alt={floorItem.label} className="ground-item-img" />
           </div>
@@ -530,7 +592,13 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
           onMouseEnter={() => setHoveredItem({ label: "Archivist", verbText: "Talk to Archivist (City Guide)" })}
           onMouseLeave={() => setHoveredItem(null)}
           onClick={handleScholarClick}
-          onContextMenu={(e) => openWheelForTarget(e, getScholarTarget())}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openWheelForTarget(e.clientX, e.clientY, getScholarTarget());
+          }}
+          onTouchStart={(e) => handleTouchStart(getScholarTarget, e)}
+          onTouchEnd={handleTouchEnd}
           speechText={scholarSpeech}
         />
 

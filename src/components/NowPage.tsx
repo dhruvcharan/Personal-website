@@ -1,129 +1,160 @@
-import React from "react";
-import { currentlyReading, bookCategories, Book } from "./book_data";
-import "../styles/NowPage.css";
+import React, { useEffect } from 'react';
+import { currentlyReading, bookCategories } from './book_data';
+import { soundFx } from '../utils/audio';
+import '../styles/NowPage.css';
 
 interface NowPageProps {
   onBackClick: () => void;
-  onClose?: () => void;
 }
 
-const NowPage: React.FC<NowPageProps> = ({ onBackClick, onClose }) => {
+const NowPage: React.FC<NowPageProps> = ({ onBackClick }) => {
+  useEffect(() => {
+    soundFx.playMagic();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        soundFx.playClick();
+        onBackClick();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onBackClick]);
+
+  const handleClose = () => {
+    soundFx.playClick();
+    onBackClick();
+  };
+
   return (
-    <div className="now-page-overlay" onClick={onClose}>
-      {}
-      <div className="now-page-content" onClick={(e) => e.stopPropagation()}>
-        {onClose && (
-          <button className="page-close-button" onClick={onClose}>
-            &times; {}
-          </button>
-        )}
+    <div className="adv-now-overlay" onClick={handleClose}>
+      <div className="adv-now-window" onClick={(e) => e.stopPropagation()}>
+        
+        {/* Chunky 3D Close Push-Button */}
+        <button
+          className="adv-gui-close-btn"
+          onClick={handleClose}
+          aria-label="Close Living Chronolog (Escape)"
+          title="Return to Street (ESC)"
+        >
+          <span className="close-btn-text">✕ ESC</span>
+        </button>
 
-        <h1 className="now-page-title">What I Am Currently Up To</h1>
+        {/* Window Title Plaque */}
+        <header className="adv-window-header">
+          <div className="adv-header-plaque">
+            <span className="plaque-sub">TEMPORAL LOG • WHAT I'M DOING NOW</span>
+            <h1 className="plaque-title">The Chronolog</h1>
+            <p className="plaque-desc">
+              Inspired by Derek Sivers' <a href="https://nownownow.com/about" target="_blank" rel="noopener noreferrer" className="adv-link">/now page movement</a>.
+            </p>
+          </div>
+        </header>
 
-        <section className="personal-updates">
-          <h2>Right Now...</h2>
-          <p>
-            Inspired by the{" "}
-            <a
-              href="https://nownownow.com/about"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              /now page movement
-            </a>
-            .
-          </p>
-          <p>
-            Hi there, Dhruv here! I'm a Software Developer with a deep-rooted interest in the mechanics of capital markets. I currently work at Goldman Sachs, where my present focus is on building AI tools, data migration and ingestion pipelines in the cloud, and a few other interesting projects.
-          </p>
-          <p>
-            I have a serious love for puzzles of all kinds. Crosswords are a particular
-            favorite, I’m hoping to beat my peak streak of 355. I also enjoy
-            trivia and pop culture quizzes. Professionally, I’m looking for
-            opportunities to apply this problem-solving instinct toward
-            challenging problems in the financial space, where the tail risks and stakes are high—as is the upside.
-          </p>
-          <p>
-            Currently working on a couple of side projects and looking to learn
-            more about building resilient, intelligent systems that are maximally
-            user-friendly. Striving to build a knowledge base on a foundation of
-            continuous learning, growth, and an appreciation for the things
-            that make the world tick.
-          </p>
+        {/* Section 1: The Scribe's Current Focus Console */}
+        <section className="adv-console-section">
+          <div className="adv-section-badge">
+            <span>ACTIVE QUESTS &amp; PURSUITS</span>
+          </div>
+
+          <div className="adv-console-body">
+            <p>
+              Hi there, Dhruv here! I'm a Software Developer with a deep-rooted interest in the mechanics of capital markets. I currently work at <strong>Goldman Sachs</strong>, where my present focus is on building AI tools, enterprise data systems, and cloud infrastructure.
+            </p>
+            <p>
+              I have a serious love for puzzles of all kinds. Crosswords are a particular favorite—I’m aiming to beat my peak streak of <strong>355 days</strong> on the NYT Crossword. I also enjoy trivia and pop culture quizzes. Professionally, I’m constantly looking for opportunities to apply this problem-solving instinct toward challenging problems in the financial space, where the tail risks and stakes are high—as is the upside.
+            </p>
+            <p>
+              Currently exploring new side projects and deepening my understanding of building resilient, intelligent systems that are maximally user-friendly. Striving to cultivate a knowledge base grounded in continuous learning, deliberate practice, and an appreciation for the subtle gears that make the world tick.
+            </p>
+          </div>
         </section>
 
-        {}
-        <h2 className="reading-section-title">Currently Reading</h2>
-        <p className="now-page-description">
-          {" "}
-          A peek into the books currently occupying my attention.
-        </p>
+        {/* Section 2: Library Bookshelf & Archive */}
+        <section className="adv-library-section">
+          <div className="adv-section-header">
+            <h2 className="adv-section-title">Reading Archive</h2>
+            <p className="adv-section-desc">Volumes collected, studied, and catalogued across disciplines.</p>
+          </div>
 
-        {}
-        <div className="book-categories-container">
-          {bookCategories.map((category) => {
-            const booksInCategory = currentlyReading.filter(
-              (book) => book.category === category,
-            );
-            if (booksInCategory.length === 0) return null;
+          <div className="adv-category-list">
+            {bookCategories.map((category) => {
+              const booksInCategory = currentlyReading.filter(
+                (book) => book.category === category
+              );
+              if (booksInCategory.length === 0) return null;
 
-            return (
-              <section key={category} className="book-category">
-                {}
-                <h3 className="book-category-title">{category}</h3>
-                {}
-                <div className="book-list">
-                  {booksInCategory.map((book) => (
-                    <div key={book.id} className="book-item">
-                      {}
-                      <div className="book-cover-container">
-                        <a
-                          href={book.goodreads}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={`View "${book.title}" on Goodreads`}
-                        >
-                          <img
-                            src={book.imageUrl}
-                            alt={`Cover of ${book.title}`}
-                            className="book-cover"
-                          />
-                        </a>
-                      </div>
-                      {}
-                      <div className="book-details">
-                        {}
-                        <h4 className="book-title">
+              return (
+                <div key={category} className="adv-category-group">
+                  
+                  {/* Category Header Badge */}
+                  <div className="adv-category-badge-row">
+                    <span className="adv-category-badge">[{category.toUpperCase()}]</span>
+                    <div className="adv-category-rule" />
+                  </div>
+
+                  {/* Books Grid */}
+                  <div className="adv-books-grid">
+                    {booksInCategory.map((book) => (
+                      <article key={book.id} className="adv-book-card">
+                        
+                        {/* Book Cover */}
+                        <div className="adv-book-cover-box">
                           <a
                             href={book.goodreads}
                             target="_blank"
                             rel="noopener noreferrer"
+                            className="adv-book-cover-link"
                             title={`View "${book.title}" on Goodreads`}
+                            onClick={() => soundFx.playClick()}
                           >
-                            {book.title}
+                            <img
+                              src={book.imageUrl}
+                              alt={`Cover of ${book.title}`}
+                              className="adv-book-cover-img"
+                              loading="lazy"
+                            />
                           </a>
-                        </h4>
-                        {}
-                        <p className="book-author">by {book.author}</p>
-                        {}
-                        {book.thoughts && (
-                          <p className="book-notes">{book.thoughts}</p>
-                        )}
-                        {}
-                        {book.rating && (
-                          <p className="book-rating">
-                            My Rating: {"★".repeat(book.rating)}
-                            {"☆".repeat(5 - book.rating)} ({book.rating}/5)
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                        </div>
+
+                        {/* Book Details */}
+                        <div className="adv-book-details">
+                          <h3 className="adv-book-title">
+                            <a
+                              href={book.goodreads}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="adv-book-title-link"
+                              onClick={() => soundFx.playClick()}
+                            >
+                              {book.title}
+                            </a>
+                          </h3>
+                          <p className="adv-book-author">by {book.author}</p>
+
+                          {book.rating && (
+                            <div className="adv-book-rating">
+                              <span className="rating-stars">{'★'.repeat(book.rating)}{'☆'.repeat(5 - book.rating)}</span>
+                              <span className="rating-score">({book.rating}/5)</span>
+                            </div>
+                          )}
+
+                          {book.thoughts && (
+                            <div className="adv-book-marginalia">
+                              <span className="marginalia-tag">NOTES:</span>
+                              <p className="marginalia-p">{book.thoughts}</p>
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
                 </div>
-              </section>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </section>
       </div>
     </div>
   );

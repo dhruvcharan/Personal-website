@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { soundFx } from '../utils/audio';
 import '../styles/InteractionWheel.css';
 
 export type VerbType = 'hand' | 'eye' | 'mouth';
@@ -23,14 +24,12 @@ interface InteractionWheelProps {
 // Crisp 16x16 Pixel Art SVGs with crispEdges rendering
 const PixelHandIcon = () => (
   <svg viewBox="0 0 16 16" className="pixel-verb-icon" shapeRendering="crispEdges">
-    {/* Pixel Gauntlet / Hand (16x16 matrix) */}
     <rect x="5" y="1" width="2" height="6" fill="currentColor" />
     <rect x="8" y="0" width="2" height="7" fill="currentColor" />
     <rect x="11" y="2" width="2" height="5" fill="currentColor" />
     <rect x="2" y="5" width="2" height="4" fill="currentColor" />
     <rect x="3" y="7" width="11" height="6" fill="currentColor" />
     <rect x="4" y="13" width="9" height="3" fill="currentColor" />
-    {/* Inner shadow pixel details */}
     <rect x="5" y="9" width="1" height="3" fill="#1b1207" />
     <rect x="8" y="9" width="1" height="3" fill="#1b1207" />
     <rect x="11" y="9" width="1" height="3" fill="#1b1207" />
@@ -39,7 +38,6 @@ const PixelHandIcon = () => (
 
 const PixelEyeIcon = () => (
   <svg viewBox="0 0 16 16" className="pixel-verb-icon" shapeRendering="crispEdges">
-    {/* Pixel Eye / Examine (16x16 matrix) */}
     <rect x="4" y="3" width="8" height="2" fill="currentColor" />
     <rect x="2" y="5" width="2" height="2" fill="currentColor" />
     <rect x="12" y="5" width="2" height="2" fill="currentColor" />
@@ -48,7 +46,6 @@ const PixelEyeIcon = () => (
     <rect x="2" y="9" width="2" height="2" fill="currentColor" />
     <rect x="12" y="9" width="2" height="2" fill="currentColor" />
     <rect x="4" y="11" width="8" height="2" fill="currentColor" />
-    {/* Pupil & Iris */}
     <rect x="6" y="6" width="4" height="4" fill="#1b1207" />
     <rect x="7" y="7" width="2" height="2" fill="currentColor" />
   </svg>
@@ -56,7 +53,6 @@ const PixelEyeIcon = () => (
 
 const PixelMouthIcon = () => (
   <svg viewBox="0 0 16 16" className="pixel-verb-icon" shapeRendering="crispEdges">
-    {/* Pixel Mouth / Talk (16x16 matrix) */}
     <rect x="4" y="4" width="8" height="2" fill="currentColor" />
     <rect x="2" y="6" width="2" height="2" fill="currentColor" />
     <rect x="12" y="6" width="2" height="2" fill="currentColor" />
@@ -64,7 +60,6 @@ const PixelMouthIcon = () => (
     <rect x="14" y="8" width="2" height="2" fill="currentColor" />
     <rect x="2" y="10" width="12" height="2" fill="currentColor" />
     <rect x="4" y="12" width="8" height="2" fill="currentColor" />
-    {/* Inner mouth opening & teeth */}
     <rect x="3" y="8" width="10" height="2" fill="#1b1207" />
     <rect x="5" y="8" width="2" height="1" fill="#fff" />
     <rect x="9" y="8" width="2" height="1" fill="#fff" />
@@ -80,8 +75,21 @@ const InteractionWheel: React.FC<InteractionWheelProps> = ({
 }) => {
   const [selectedVerb, setSelectedVerb] = useState<VerbType | null>(null);
 
+  useEffect(() => {
+    soundFx.playClick();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const handleVerbEnter = (verb: VerbType) => {
     setSelectedVerb(verb);
+    soundFx.playClick();
     if (verb === 'hand') onHoverVerb(target.handVerb);
     else if (verb === 'eye') onHoverVerb(target.eyeVerb);
     else if (verb === 'mouth') onHoverVerb(target.mouthVerb);
@@ -92,15 +100,16 @@ const InteractionWheel: React.FC<InteractionWheelProps> = ({
     onHoverVerb(null);
   };
 
-  const handleVerbClick = (e: React.MouseEvent, verb: VerbType) => {
+  const handleVerbClick = (e: React.MouseEvent | React.TouchEvent, verb: VerbType) => {
     e.stopPropagation();
+    soundFx.playMagic();
     onSelectVerb(verb);
     onClose();
   };
 
   // Clamp wheel position within viewport
-  const clampedX = Math.max(80, Math.min(window.innerWidth - 80, position.x));
-  const clampedY = Math.max(80, Math.min(window.innerHeight - 80, position.y));
+  const clampedX = Math.max(90, Math.min(window.innerWidth - 90, position.x));
+  const clampedY = Math.max(90, Math.min(window.innerHeight - 90, position.y));
 
   return (
     <div className="interaction-wheel-overlay" onClick={onClose}>
@@ -120,7 +129,9 @@ const InteractionWheel: React.FC<InteractionWheelProps> = ({
           onMouseEnter={() => handleVerbEnter('hand')}
           onMouseLeave={handleVerbLeave}
           onClick={(e) => handleVerbClick(e, 'hand')}
+          onTouchEnd={(e) => handleVerbClick(e, 'hand')}
           title={target.handVerb}
+          aria-label={target.handVerb}
         >
           <PixelHandIcon />
           <span className="verb-tooltip-badge">OPERATE</span>
@@ -132,7 +143,9 @@ const InteractionWheel: React.FC<InteractionWheelProps> = ({
           onMouseEnter={() => handleVerbEnter('eye')}
           onMouseLeave={handleVerbLeave}
           onClick={(e) => handleVerbClick(e, 'eye')}
+          onTouchEnd={(e) => handleVerbClick(e, 'eye')}
           title={target.eyeVerb}
+          aria-label={target.eyeVerb}
         >
           <PixelEyeIcon />
           <span className="verb-tooltip-badge">EXAMINE</span>
@@ -144,7 +157,9 @@ const InteractionWheel: React.FC<InteractionWheelProps> = ({
           onMouseEnter={() => handleVerbEnter('mouth')}
           onMouseLeave={handleVerbLeave}
           onClick={(e) => handleVerbClick(e, 'mouth')}
+          onTouchEnd={(e) => handleVerbClick(e, 'mouth')}
           title={target.mouthVerb}
+          aria-label={target.mouthVerb}
         >
           <PixelMouthIcon />
           <span className="verb-tooltip-badge">TALK / TASTE</span>

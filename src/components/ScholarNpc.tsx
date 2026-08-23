@@ -9,6 +9,8 @@ interface ScholarNpcProps {
   onMouseLeave?: () => void;
   onClick: (e: React.MouseEvent) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
+  onTouchStart?: (e: React.TouchEvent) => void;
+  onTouchEnd?: (e: React.TouchEvent) => void;
   speechText?: string | null;
 }
 
@@ -19,6 +21,8 @@ const ScholarNpc: React.FC<ScholarNpcProps> = ({
   onMouseLeave,
   onClick,
   onContextMenu,
+  onTouchStart,
+  onTouchEnd,
   speechText
 }) => {
   return (
@@ -29,6 +33,8 @@ const ScholarNpc: React.FC<ScholarNpcProps> = ({
       onMouseLeave={onMouseLeave}
       onClick={onClick}
       onContextMenu={onContextMenu}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
     >
       {/* Overhead floating speech line */}
       {speechText && (
@@ -45,7 +51,7 @@ const ScholarNpc: React.FC<ScholarNpcProps> = ({
       {/* Ground Shadow */}
       <div className="scholar-ground-shadow" />
 
-      {/* Sprite graphic */}
+      {/* Pure Pixel Art Sprite graphic */}
       <div className="scholar-sprite-box">
         <img src={scholarImg} alt={name} className="scholar-pixel-img" />
         <div className="lantern-glow" />

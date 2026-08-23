@@ -1,42 +1,73 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+:root {
+  /* ══════════════════════════════════════════════════════════════════════════
+     RETRO ADVENTURE GUI PALETTE: High-Contrast 90s VGA Hardware & Inks
+     ══════════════════════════════════════════════════════════════════════════ */
+
+  /* High-Contrast Stage & Frame Colors */
+  --gui-bg-obsidian: #0a0812;
+  --gui-bg-panel: #161022;
+  --gui-bg-panel-alt: #231934;
+  --gui-bg-light: #f7f1e4;
+  --gui-bg-parchment: #eee3cd;
+
+  /* 3D Stepped Pixel Bevels (Classic 90s Adventure GUI) */
+  --bevel-light: #f0be5b;
+  --bevel-mid: #9c6c28;
+  --bevel-dark: #3a220c;
+  --bevel-black: #000000;
+
+  /* Saturated High-Energy Accent Colors */
+  --color-gold: #ffcc00;
+  --color-gold-bright: #ffeb3b;
+  --color-cyan: #00ffff;
+  --color-cyan-bright: #4dfcff;
+  --color-amber: #ffdf80;
+  --color-ruby: #e62020;
+  --color-ruby-dark: #7a0c0c;
+  --color-green: #39ff14;
+
+  /* Text & Inks */
+  --text-pure-white: #ffffff;
+  --text-ink-black: #120904;
+  --text-ink-dark: #2a1608;
+  --text-ink-crimson: #a01808;
+  --text-muted-gold: #d8b87a;
+  --text-muted-gray: #a89cb8;
+
+  /* Typography Families */
+  --font-game-hud: 'Press Start 2P', monospace, cursive;
+  --font-pixel-dialogue: 'VT323', monospace;
+  --font-serif-title: 'IM Fell English', 'MedievalSharp', Georgia, serif;
+  --font-serif-body: 'IM Fell English', 'MedievalSharp', Georgia, serif;
+
+  /* Hard Drop Shadows (0-blur pixel offset) */
+  --shadow-pixel-sm: 2px 2px 0 #000000;
+  --shadow-pixel-md: 4px 4px 0 #000000;
+  --shadow-pixel-lg: 6px 6px 0 #000000;
+  --shadow-pixel-inset: inset 2px 2px 0 rgba(255, 255, 255, 0.15), inset -2px -2px 0 rgba(0, 0, 0, 0.6);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--gui-bg-obsidian);
+  color: var(--text-pure-white);
+  font-family: var(--font-serif-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
 
 .App {
   min-height: 100vh;
   margin: 0;
   padding: 0;
-  background-color: #040612;
-  color: white;
+  background-color: var(--gui-bg-obsidian);
+  color: #ffffff;
   overflow: hidden;
-  font-family: 'Press Start 2P', monospace, cursive;
+  font-family: var(--font-game-hud);
 }
-
-.game-header-banner {
-  position: fixed;
-  top: 15px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 100;
-  text-align: center;
-  pointer-events: none;
-}
-
-.game-title {
-  font-family: 'Press Start 2P', cursive;
-  font-size: 2.2rem;
-  margin: 0;
-  color: #ffcc00;
-  text-shadow: 
-    3px 3px 0px #8b0000, 
-    6px 6px 0px #000000,
-    0 0 20px rgba(255, 204, 0, 0.5);
-  letter-spacing: 2px;
-}
-
-.game-subtitle {
-  font-family: 'VT323', monospace;
-  font-size: 1.4rem;
-  margin-top: 4px;
-  color: #00f0ff;
-  text-shadow: 2px 2px 0px #000000;
-  letter-spacing: 2px;
-} 

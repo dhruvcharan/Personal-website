@@ -1,45 +1,120 @@
-import React from 'react';
-import {getSortedPostsMetadata, PostMetadata} from '../postsData';
+import React, { useEffect } from 'react';
+import { getSortedPostsMetadata } from '../postsData';
+import { soundFx } from '../utils/audio';
 import '../styles/BlogListPage.css';
 
 interface BlogListPageProps {
-    onClose: () => void;
-    onSelectPost: (slug: string) => void;
+  onClose: () => void;
+  onSelectPost: (slug: string) => void;
 }
 
-const BlogListPage: React.FC<BlogListPageProps> = ({onClose, onSelectPost}) => {
-    const posts = getSortedPostsMetadata();
+const BlogListPage: React.FC<BlogListPageProps> = ({ onClose, onSelectPost }) => {
+  const posts = getSortedPostsMetadata();
 
-    return (
-        <div className="blog-list-overlay" onClick={onClose}>
-           <div className="blog-list-content" onClick={(e) => e.stopPropagation()}>
-                <button className="page-close-button" onClick={onClose}>
-                   &times;
-                </button>
-                <h1 className="blog-list-title">Inchoate Ramblings</h1>
-                   {posts.length === 0 ? (
-                       <p>No posts yet... check back later!</p>
-                   ) : (
-                       <ul className="post-items-list">
-                           {posts.map((post) => (
-                               <li key={post.slug} className="post-list-item">
-                                   <h2 className="post-list-title">
-                                       <button onClick={() => onSelectPost(post.slug)} className="post-title-button">
-                                           {post.title}
-                                       </button>
-                                   </h2>
-                                   <p className="post-list-date">{new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                                   <p className="post-list-excerpt">{post.excerpt}</p>
-                                   <button onClick={() => onSelectPost(post.slug)} className="read-more-button">
-                                        Read More &raquo;
-                                    </button>
-                               </li>
-                           ))}
-                       </ul>
-                   )}
-           </div>
-       </div>
-     );
-   };
-   
-   export default BlogListPage;
+  useEffect(() => {
+    soundFx.playMagic();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        soundFx.playClick();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  const handlePostClick = (slug: string) => {
+    soundFx.playClick();
+    onSelectPost(slug);
+  };
+
+  const handleClose = () => {
+    soundFx.playClick();
+    onClose();
+  };
+
+  return (
+    <div className="adv-gui-overlay" onClick={handleClose}>
+      {/* Heavy 3D Beveled Message Board Window */}
+      <div className="adv-message-board-window" onClick={(e) => e.stopPropagation()}>
+        
+        {/* Chunky 3D Close Button */}
+        <button
+          className="adv-gui-close-btn"
+          onClick={handleClose}
+          aria-label="Close Bulletin (Escape)"
+          title="Return to Street (ESC)"
+        >
+          <span className="close-btn-text">✕ ESC</span>
+        </button>
+
+        {/* Window Title Bar */}
+        <header className="adv-window-header">
+          <div className="adv-header-plaque">
+            <span className="plaque-sub">TOWN MESSAGE BOARD • FIELD DISPATCHES</span>
+            <h1 className="plaque-title">Inchoate Ramblings</h1>
+            <p className="plaque-desc">
+              Notes on capital markets plumbing, software craft, artificial intelligence, and curious systems.
+            </p>
+          </div>
+        </header>
+
+        {/* Pinned Parchment Notices */}
+        {posts.length === 0 ? (
+          <div className="adv-empty-notice">
+            <p>No dispatches currently pinned to the board. Check back later.</p>
+          </div>
+        ) : (
+          <div className="adv-notices-list">
+            {posts.map((post, idx) => {
+              const formattedDate = new Date(post.date).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              });
+
+              return (
+                <article
+                  key={post.slug}
+                  className="adv-dispatch-card"
+                  onClick={() => handlePostClick(post.slug)}
+                >
+                  <div className="dispatch-header-row">
+                    <span className="dispatch-badge">DISPATCH #{posts.length - idx}</span>
+                    <time className="dispatch-date-stamp" dateTime={post.date}>
+                      {formattedDate}
+                    </time>
+                  </div>
+
+                  <h2 className="dispatch-headline">
+                    <button
+                      className="dispatch-title-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePostClick(post.slug);
+                      }}
+                    >
+                      {post.title}
+                    </button>
+                  </h2>
+
+                  <p className="dispatch-excerpt">{post.excerpt}</p>
+
+                  <div className="dispatch-footer-row">
+                    <span className="dispatch-read-prompt">
+                      ☞ Click to Read Dispatch
+                    </span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default BlogListPage;
