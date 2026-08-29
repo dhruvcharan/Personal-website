@@ -6,6 +6,12 @@ import DialogueMenu from "./DialogueMenu";
 import InteractionWheel, { InteractiveTarget, VerbType } from "./InteractionWheel";
 import { DialogueOption } from "../data/dialogueData";
 import { soundFx } from "../utils/audio";
+import {
+  calculateStageMetrics,
+  StageMetrics,
+  REFERENCE_SCALE,
+  SCHOLAR_X_PERCENT,
+} from "../utils/stageGeometry";
 import "../styles/GameEnvironment.css";
 
 // Assets & Navigation Icons
@@ -72,18 +78,8 @@ const DEFAULT_INVENTORY_ITEMS: InventoryItem[] = [
   { id: 'now', type: 'now', label: 'Hourglass', verbText: 'Look at Hourglass (Go to Now Page)', path: '/now', icon: nowIcon },
 ];
 
-const getRoadBoundaries = () => {
-  const windowWidth = window.innerWidth;
-  return {
-    left: windowWidth * 0.04,
-    right: windowWidth * 0.94
-  };
-};
-
-const SCHOLAR_X_PERCENT = 0.81;
-const PROXIMITY_THRESHOLD = 130;
-
 const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
+  const [stageMetrics, setStageMetrics] = useState<StageMetrics>(() => calculateStageMetrics());
   const [showCharacter, setShowCharacter] = useState(true);
   const [isInteracting, setIsInteracting] = useState(false);
   const [interactiveObjects, setInteractiveObjects] = useState<InteractiveObject[]>([]);
@@ -102,16 +98,17 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   } | null>(null);
   const [wheelHoveredVerbText, setWheelHoveredVerbText] = useState<string | null>(null);
 
-  const [characterPosition, setCharacterPosition] = useState<Position>({
-    x: window.innerWidth * 0.2,
-    y: window.innerHeight - 215
-  });
+  const [characterPosition, setCharacterPosition] = useState<Position>(() => ({
+    x: (typeof window !== 'undefined' ? window.innerWidth : 1440) * 0.2,
+    y: stageMetrics.characterBaseY
+  }));
 
   const [walkTargetX, setWalkTargetX] = useState<number | null>(null);
   const [targetMarker, setTargetMarker] = useState<TargetMarker | null>(null);
 
   const characterPositionRef = useRef<Position>(characterPosition);
-  const roadBoundariesRef = useRef(getRoadBoundaries());
+  const prevViewportWidthRef = useRef<number>(typeof window !== 'undefined' ? window.innerWidth : 1440);
+  const roadBoundariesRef = useRef(stageMetrics.roadBoundaries);
   const pendingFloorPickupRef = useRef<boolean>(false);
   const pendingScholarTalkRef = useRef<boolean>(false);
   const dialogueTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -154,10 +151,34 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     unknown: []
   };
 
+  // Recompute responsive metrics and sync positions seamlessly on resize / monitor switch
   useEffect(() => {
     const handleResize = () => {
-      roadBoundariesRef.current = getRoadBoundaries();
+      const newMetrics = calculateStageMetrics(window.innerWidth, window.innerHeight);
+      setStageMetrics(newMetrics);
+      roadBoundariesRef.current = newMetrics.roadBoundaries;
+
+      setCharacterPosition((prev) => {
+        const prevW = prevViewportWidthRef.current || window.innerWidth;
+        const currentXPercent = prev.x / prevW;
+        const newX = Math.max(
+          newMetrics.roadBoundaries.left,
+          Math.min(
+            newMetrics.roadBoundaries.right - newMetrics.characterWidth,
+            currentXPercent * window.innerWidth
+          )
+        );
+        const newPos = {
+          x: newX,
+          y: newMetrics.characterBaseY
+        };
+        characterPositionRef.current = newPos;
+        return newPos;
+      });
+
+      prevViewportWidthRef.current = window.innerWidth;
     };
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -167,8 +188,8 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     characterPositionRef.current = pos;
 
     // Automatically close dialogue menu if the player walks away from the NPC
-    const scholarRawX = window.innerWidth * SCHOLAR_X_PERCENT;
-    if (showDialogueMenu && Math.abs(pos.x - scholarRawX) > PROXIMITY_THRESHOLD + 40) {
+    const scholarRawX = stageMetrics.scholarX;
+    if (showDialogueMenu && Math.abs(pos.x - scholarRawX) > stageMetrics.scholarProximityThreshold + 40) {
       setShowDialogueMenu(false);
     }
   };
@@ -189,7 +210,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
 
     soundFx.playFootstep();
     const clickX = e.clientX;
-    const clickY = Math.min(e.clientY, window.innerHeight - 140);
+    const clickY = stageMetrics.groundY - 10;
 
     setTargetMarker({ x: clickX, y: clickY, id: Date.now() });
     setWalkTargetX(clickX);
@@ -207,20 +228,21 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const handleScholarClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     const currentX = characterPositionRef.current.x;
-    const scholarRawX = window.innerWidth * SCHOLAR_X_PERCENT;
+    const scholarRawX = stageMetrics.scholarX;
     const distance = Math.abs(currentX - scholarRawX);
 
-    if (distance <= PROXIMITY_THRESHOLD) {
+    if (distance <= stageMetrics.scholarProximityThreshold) {
       setShowDialogueMenu(true);
       pendingScholarTalkRef.current = false;
     } else {
       soundFx.playFootstep();
-      const stopXPos = currentX < scholarRawX ? scholarRawX - 85 : scholarRawX + 85;
+      const stopOffset = Math.round(85 * (stageMetrics.stageScale / REFERENCE_SCALE));
+      const stopXPos = currentX < scholarRawX ? scholarRawX - stopOffset : scholarRawX + stopOffset;
       pendingScholarTalkRef.current = true;
       setShowDialogueMenu(false);
       setActiveWheel(null);
       setWalkTargetX(stopXPos);
-      setTargetMarker({ x: scholarRawX, y: window.innerHeight - 215, id: Date.now() });
+      setTargetMarker({ x: scholarRawX, y: stageMetrics.groundY - 10, id: Date.now() });
     }
   };
 
@@ -230,11 +252,11 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     setTargetMarker(null);
 
     const currentX = characterPositionRef.current.x;
-    const scholarRawX = window.innerWidth * SCHOLAR_X_PERCENT;
+    const scholarRawX = stageMetrics.scholarX;
 
     if (pendingScholarTalkRef.current) {
       pendingScholarTalkRef.current = false;
-      if (Math.abs(currentX - scholarRawX) <= PROXIMITY_THRESHOLD + 40) {
+      if (Math.abs(currentX - scholarRawX) <= stageMetrics.scholarProximityThreshold + 40) {
         setShowDialogueMenu(true);
       }
     }
@@ -265,8 +287,8 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
 
           if (option.id !== 'exit') {
             const curX = characterPositionRef.current.x;
-            const schX = window.innerWidth * SCHOLAR_X_PERCENT;
-            if (Math.abs(curX - schX) <= PROXIMITY_THRESHOLD + 40) {
+            const schX = stageMetrics.scholarX;
+            if (Math.abs(curX - schX) <= stageMetrics.scholarProximityThreshold + 40) {
               setShowDialogueMenu(true);
             }
           }
@@ -397,14 +419,15 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     mouthVerb: 'Talk to Archivist',
     onExecuteVerb: (verb: VerbType) => {
       const currentX = characterPositionRef.current.x;
-      const scholarRawX = window.innerWidth * SCHOLAR_X_PERCENT;
+      const scholarRawX = stageMetrics.scholarX;
       const distance = Math.abs(currentX - scholarRawX);
 
       if (verb === 'hand') {
-        if (distance <= PROXIMITY_THRESHOLD) {
+        if (distance <= stageMetrics.scholarProximityThreshold) {
           speakAsCharacter("Knock it off!");
         } else {
-          const stopXPos = currentX < scholarRawX ? scholarRawX - 85 : scholarRawX + 85;
+          const stopOffset = Math.round(85 * (stageMetrics.stageScale / REFERENCE_SCALE));
+          const stopXPos = currentX < scholarRawX ? scholarRawX - stopOffset : scholarRawX + stopOffset;
           setWalkTargetX(stopXPos);
           setTimeout(() => {
             speakAsCharacter("Knock it off!");
@@ -413,11 +436,12 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       } else if (verb === 'eye') {
         speakAsCharacter("He looks like he knows a thing or two about a thing or two.");
       } else if (verb === 'mouth') {
-        if (distance <= PROXIMITY_THRESHOLD) {
+        if (distance <= stageMetrics.scholarProximityThreshold) {
           setShowDialogueMenu(true);
           pendingScholarTalkRef.current = false;
         } else {
-          const stopXPos = currentX < scholarRawX ? scholarRawX - 85 : scholarRawX + 85;
+          const stopOffset = Math.round(85 * (stageMetrics.stageScale / REFERENCE_SCALE));
+          const stopXPos = currentX < scholarRawX ? scholarRawX - stopOffset : scholarRawX + stopOffset;
           pendingScholarTalkRef.current = true;
           setShowDialogueMenu(false);
           setWalkTargetX(stopXPos);
@@ -512,7 +536,18 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       : "Click floor to walk • Right-click items & NPCs to interact";
 
   return (
-    <div className="game-environment" onClick={handleStageClick}>
+    <div
+      className="game-environment"
+      style={{
+        '--stage-scale': stageMetrics.stageScale,
+        '--ground-offset': `${stageMetrics.groundOffset}px`,
+        '--char-width': `${stageMetrics.characterWidth}px`,
+        '--char-height': `${stageMetrics.characterHeight}px`,
+        '--scholar-width': `${stageMetrics.scholarWidth}px`,
+        '--scholar-height': `${stageMetrics.scholarHeight}px`,
+      } as React.CSSProperties}
+      onClick={handleStageClick}
+    >
       {/* Title Header Banner */}
       <div className="game-header-banner">
         <h1 className="game-title">Dhruv Charan</h1>
@@ -646,16 +681,14 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
           <PixelArtCharacter
             position={characterPosition}
             targetX={walkTargetX}
+            baseYPosition={stageMetrics.characterBaseY}
+            stageScale={stageMetrics.stageScale}
+            moveSpeedPps={stageMetrics.moveSpeedPps}
+            jumpHeight={stageMetrics.jumpHeight}
             onArrival={handleArrival}
             onPositionUpdate={updateCharacterPosition}
-            roadBoundaries={roadBoundariesRef.current}
-            obstacles={[
-              {
-                id: 'scholar',
-                left: window.innerWidth * SCHOLAR_X_PERCENT - 45,
-                right: window.innerWidth * SCHOLAR_X_PERCENT + 45
-              }
-            ]}
+            roadBoundaries={stageMetrics.roadBoundaries}
+            obstacles={[stageMetrics.scholarObstacleHitbox]}
             isOpeningSatchel={isOpeningSatchel}
             speechText={characterSpeech}
           />

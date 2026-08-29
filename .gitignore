@@ -5,3 +5,6 @@ Thumbs.db
 /build
 .agents
 skills-lock.json
+Screenshot*.png
+__pycache__/
+*.pyc

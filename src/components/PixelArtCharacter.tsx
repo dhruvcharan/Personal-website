@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { REFERENCE_SCALE } from "../utils/stageGeometry";
 import "../styles/PixelArtCharacter.css";
 
 interface Position {
@@ -21,6 +22,10 @@ interface PixelArtCharacterProps {
   selectedLink?: string | null;
   position: Position;
   targetX?: number | null;
+  baseYPosition: number;
+  stageScale?: number;
+  moveSpeedPps?: number;
+  jumpHeight?: number;
   onArrival?: () => void;
   onJump?: () => void;
   onPositionUpdate?: (position: Position) => void;
@@ -43,10 +48,7 @@ interface Particle {
   size: number;
 }
 
-const MOVE_SPEED = 6;
-const JUMP_HEIGHT = 80;
 const JUMP_DURATION = 1050;
-const getBaseYPosition = () => window.innerHeight - 215;
 
 const easeOutQuad = (t: number): number => -t * (t - 2);
 const easeInQuad = (t: number): number => t * t;
@@ -54,6 +56,10 @@ const easeInQuad = (t: number): number => t * t;
 const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
   position,
   targetX = null,
+  baseYPosition,
+  stageScale = 1.1,
+  moveSpeedPps = 550,
+  jumpHeight = 80,
   onArrival,
   onPositionUpdate,
   roadBoundaries = { left: 0, right: window.innerWidth },
@@ -61,11 +67,10 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
   isOpeningSatchel = false,
   speechText = null,
   isCastingWand = false,
-  onSpeechComplete
 }) => {
   const [currentPosition, setCurrentPosition] = useState<Position>({
     x: position.x || window.innerWidth * 0.2,
-    y: getBaseYPosition(),
+    y: baseYPosition,
   });
   const [animation, setAnimation] = useState<AnimationState>("idle");
   const [direction, setDirection] = useState<"left" | "right">("right");
@@ -78,30 +83,54 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
   const movementFrameRef = useRef<number | null>(null);
   const jumpFrameRef = useRef<number | null>(null);
   const targetWalkFrameRef = useRef<number | null>(null);
-  const initialYPositionRef = useRef<number>(getBaseYPosition());
+  const lastKeyboardTimestampRef = useRef<number | null>(null);
+  const lastWalkTimestampRef = useRef<number | null>(null);
+  const keyboardAccumulatedDistanceRef = useRef<number>(0);
+  const walkAccumulatedDistanceRef = useRef<number>(0);
+  const initialYPositionRef = useRef<number>(baseYPosition);
   const lastReportedPosition = useRef<Position>({ x: 0, y: 0 });
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Sync vertical baseline with parent whenever screen dimensions/metrics update
+  useEffect(() => {
+    if (!isJumping) {
+      setCurrentPosition((prev) => ({
+        ...prev,
+        y: baseYPosition,
+      }));
+    }
+  }, [baseYPosition, isJumping]);
+
+  const getCharWidth = (): number => {
+    return characterRef.current?.offsetWidth || Math.round(116 * stageScale);
+  };
+
+  const getCharHeight = (): number => {
+    return characterRef.current?.offsetHeight || Math.round(129 * stageScale);
+  };
+
   const clampXPosition = (prevX: number, nextX: number): number => {
+    const charW = getCharWidth();
     const minX = roadBoundaries.left;
-    const maxX = roadBoundaries.right - (characterRef.current?.offsetWidth || 64);
+    const maxX = roadBoundaries.right - charW;
     let clamped = Math.max(minX, Math.min(maxX, nextX));
 
-    const charCenterX = prevX + 96;
-    const nextCenterX = clamped + 96;
+    const halfW = charW / 2;
+    const charCenterX = prevX + halfW;
+    const nextCenterX = clamped + halfW;
 
     // Obstacle Hitbox Collision Checks
     for (const obs of obstacles) {
       if (nextCenterX > charCenterX) {
         // Moving right -> check if crossing obstacle left boundary
         if (charCenterX <= obs.left && nextCenterX > obs.left) {
-          clamped = obs.left - 96;
+          clamped = obs.left - halfW;
           break;
         }
       } else if (nextCenterX < charCenterX) {
         // Moving left -> check if crossing obstacle right boundary
         if (charCenterX >= obs.right && nextCenterX < obs.right) {
-          clamped = obs.right - 96;
+          clamped = obs.right - halfW;
           break;
         }
       }
@@ -112,14 +141,17 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
 
   // Dust Particle Spawner on step
   const spawnDust = (x: number, y: number) => {
+    const charW = getCharWidth();
+    const charH = getCharHeight();
+    const scaleFactor = stageScale / REFERENCE_SCALE;
     const newParticle: Particle = {
       id: Date.now() + Math.random(),
-      x: x + 80 + (Math.random() * 20 - 10),
-      y: y + 110,
+      x: x + charW * 0.55 + (Math.random() * 20 - 10) * scaleFactor,
+      y: y + charH * 0.9,
       type: "dust",
-      size: Math.random() * 5 + 3
+      size: (Math.random() * 5 + 3) * scaleFactor,
     };
-    setParticles(prev => [...prev.slice(-8), newParticle]);
+    setParticles((prev) => [...prev.slice(-8), newParticle]);
   };
 
   // Handle Satchel & Reaching Action
@@ -147,7 +179,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
       idleTimerRef.current = setTimeout(() => {
         const flavors: IdleFlavor[] = ["idle-ponder", "idle-fidget", "idle-blink"];
         const chosenFlavor = flavors[Math.floor(Math.random() * flavors.length)];
-        
+
         setAnimation(chosenFlavor);
 
         setTimeout(() => {
@@ -164,47 +196,60 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
     };
   }, [animation, isOpeningSatchel, isCastingWand]);
 
-  // Keyboard Movement
+  // Delta-time based Keyboard Movement
   const startKeyboardMovement = () => {
     if (movementFrameRef.current !== null) {
       cancelAnimationFrame(movementFrameRef.current);
     }
+    lastKeyboardTimestampRef.current = null;
+    keyboardAccumulatedDistanceRef.current = 0;
 
-    let stepCount = 0;
-    const moveCharacter = () => {
+    const moveCharacter = (timestamp: number) => {
+      if (lastKeyboardTimestampRef.current === null) {
+        lastKeyboardTimestampRef.current = timestamp;
+      }
+      const dt = Math.min((timestamp - lastKeyboardTimestampRef.current) / 1000, 0.1);
+      lastKeyboardTimestampRef.current = timestamp;
+
+      const stepDistance = moveSpeedPps * dt;
+
       setCurrentPosition((prev) => {
         let rawNextX = prev.x;
 
         if (keyPressedRef.current.left) {
-          rawNextX -= MOVE_SPEED;
+          rawNextX -= stepDistance;
           setDirection("left");
           setAnimation("move-left");
         } else if (keyPressedRef.current.right) {
-          rawNextX += MOVE_SPEED;
+          rawNextX += stepDistance;
           setDirection("right");
           setAnimation("move-right");
         } else {
           setAnimation("idle");
         }
 
-        stepCount++;
-        if (stepCount % 12 === 0) {
+        keyboardAccumulatedDistanceRef.current += stepDistance;
+        const dustThreshold = 45 * (stageScale / REFERENCE_SCALE);
+        if (keyboardAccumulatedDistanceRef.current >= dustThreshold) {
+          keyboardAccumulatedDistanceRef.current = 0;
           spawnDust(prev.x, prev.y);
         }
 
         const clampedX = clampXPosition(prev.x, rawNextX);
-        return { x: clampedX, y: isJumping ? prev.y : getBaseYPosition() };
+        return { x: clampedX, y: isJumping ? prev.y : baseYPosition };
       });
 
       if (keyPressedRef.current.left || keyPressedRef.current.right) {
         movementFrameRef.current = requestAnimationFrame(moveCharacter);
+      } else {
+        lastKeyboardTimestampRef.current = null;
       }
     };
 
     movementFrameRef.current = requestAnimationFrame(moveCharacter);
   };
 
-  // Point & Click Walk-To Target Loop with Collision Clamping
+  // Delta-time based Point & Click Walk-To Target Loop
   useEffect(() => {
     if (targetX === null || targetX === undefined) return;
 
@@ -212,52 +257,64 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
       cancelAnimationFrame(targetWalkFrameRef.current);
       targetWalkFrameRef.current = null;
     }
+    lastWalkTimestampRef.current = null;
+    walkAccumulatedDistanceRef.current = 0;
 
-    let stepCount = 0;
+    const stepTargetWalk = (timestamp: number) => {
+      if (lastWalkTimestampRef.current === null) {
+        lastWalkTimestampRef.current = timestamp;
+      }
+      const dt = Math.min((timestamp - lastWalkTimestampRef.current) / 1000, 0.1);
+      lastWalkTimestampRef.current = timestamp;
 
-    const stepTargetWalk = () => {
+      const stepDistance = moveSpeedPps * dt;
+
       setCurrentPosition((prev) => {
         const dx = targetX - prev.x;
         const dist = Math.abs(dx);
 
-        if (dist <= MOVE_SPEED) {
+        if (dist <= stepDistance) {
           setAnimation("idle");
           if (targetWalkFrameRef.current !== null) {
             cancelAnimationFrame(targetWalkFrameRef.current);
             targetWalkFrameRef.current = null;
           }
+          lastWalkTimestampRef.current = null;
           if (onArrival) {
             setTimeout(onArrival, 20);
           }
-          return { x: clampXPosition(prev.x, targetX), y: getBaseYPosition() };
+          return { x: clampXPosition(prev.x, targetX), y: baseYPosition };
         }
 
         const newDirection = dx > 0 ? "right" : "left";
         setDirection(newDirection);
         setAnimation(`move-${newDirection}`);
 
-        stepCount++;
-        if (stepCount % 10 === 0) {
+        walkAccumulatedDistanceRef.current += stepDistance;
+        const dustThreshold = 45 * (stageScale / REFERENCE_SCALE);
+        if (walkAccumulatedDistanceRef.current >= dustThreshold) {
+          walkAccumulatedDistanceRef.current = 0;
           spawnDust(prev.x, prev.y);
         }
 
-        const rawStepX = prev.x + (dx > 0 ? MOVE_SPEED : -MOVE_SPEED);
+        const rawStepX = prev.x + (dx > 0 ? stepDistance : -stepDistance);
         const clampedX = clampXPosition(prev.x, rawStepX);
 
-        // If collision stopped us from moving further toward target, arrive!
-        if (Math.abs(clampedX - prev.x) < 0.5) {
+        // If collision or boundary stopped us from moving further toward target, arrive!
+        if (Math.abs(clampedX - prev.x) < 0.2) {
           setAnimation("idle");
           if (targetWalkFrameRef.current !== null) {
             cancelAnimationFrame(targetWalkFrameRef.current);
             targetWalkFrameRef.current = null;
           }
+          lastWalkTimestampRef.current = null;
           if (onArrival) {
             setTimeout(onArrival, 20);
           }
-          return { x: clampedX, y: getBaseYPosition() };
+          return { x: clampedX, y: baseYPosition };
         }
 
-        return { x: clampedX, y: getBaseYPosition() };
+        return { x: clampedX, y: baseYPosition };
       });
 
       targetWalkFrameRef.current = requestAnimationFrame(stepTargetWalk);
@@ -270,8 +327,9 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
         cancelAnimationFrame(targetWalkFrameRef.current);
         targetWalkFrameRef.current = null;
       }
+      lastWalkTimestampRef.current = null;
     };
-  }, [targetX, roadBoundaries, obstacles]);
+  }, [targetX, roadBoundaries, obstacles, moveSpeedPps, baseYPosition, stageScale]);
 
   // Keyboard Listeners
   useEffect(() => {
@@ -298,6 +356,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
       if (!keyPressedRef.current.left && !keyPressedRef.current.right && movementFrameRef.current !== null) {
         cancelAnimationFrame(movementFrameRef.current);
         movementFrameRef.current = null;
+        lastKeyboardTimestampRef.current = null;
         setAnimation("idle");
       }
     };
@@ -309,7 +368,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [isJumping]);
+  }, [isJumping, moveSpeedPps, baseYPosition, stageScale]);
 
   const handleJump = () => {
     if (isJumping) return;
@@ -325,9 +384,9 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
 
       let jumpOffset = 0;
       if (progress < 0.5) {
-        jumpOffset = easeOutQuad(progress * 2) * JUMP_HEIGHT;
+        jumpOffset = easeOutQuad(progress * 2) * jumpHeight;
       } else {
-        jumpOffset = (1 - easeInQuad((progress - 0.5) * 2)) * JUMP_HEIGHT;
+        jumpOffset = (1 - easeInQuad((progress - 0.5) * 2)) * jumpHeight;
       }
 
       const newY = initialYPositionRef.current - jumpOffset;
@@ -349,7 +408,6 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
       jumpFrameRef.current = null;
     }
 
-    const baseYPosition = getBaseYPosition();
     setCurrentPosition((prev) => ({ ...prev, y: baseYPosition }));
     spawnDust(currentPosition.x, baseYPosition);
 
@@ -364,12 +422,12 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
     setIsJumping(false);
   };
 
-  // Report position updates
+  // Report position updates to parent
   useEffect(() => {
     if (
       onPositionUpdate &&
-      (Math.abs(lastReportedPosition.current.x - currentPosition.x) > 1 ||
-        Math.abs(lastReportedPosition.current.y - currentPosition.y) > 1)
+      (Math.abs(lastReportedPosition.current.x - currentPosition.x) > 0.5 ||
+        Math.abs(lastReportedPosition.current.y - currentPosition.y) > 0.5)
     ) {
       lastReportedPosition.current = { ...currentPosition };
       onPositionUpdate(currentPosition);
@@ -384,7 +442,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
         transform: `translate(${currentPosition.x}px, ${currentPosition.y}px)`,
       }}
     >
-      {/* Clean Floating Text directly above character's head */}
+      {/* Floating Speech directly above character's head */}
       {displayedSpeech && (
         <div className="floating-character-text">
           {displayedSpeech}
@@ -404,7 +462,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
 
       {/* Dust Particles */}
       <div className="character-particles">
-        {particles.map(p => (
+        {particles.map((p) => (
           <div
             key={p.id}
             className="particle dust"
@@ -412,7 +470,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
               left: `${p.x - currentPosition.x}px`,
               top: `${p.y - currentPosition.y}px`,
               width: `${p.size}px`,
-              height: `${p.size}px`
+              height: `${p.size}px`,
             }}
           />
         ))}

@@ -1,7 +1,7 @@
 .pixel-art-character {
     position: absolute;
-    width: 128px;
-    height: 142px;
+    width: var(--char-width, 128px);
+    height: var(--char-height, 142px);
     transform-origin: bottom center;
 }
 
@@ -11,8 +11,8 @@
     bottom: 2px;
     left: 50%;
     transform: translateX(-50%);
-    width: 64px;
-    height: 14px;
+    width: calc(var(--char-width, 128px) * 0.5);
+    height: calc(14px * var(--stage-scale, 1.1));
     background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 70%);
     border-radius: 50%;
     pointer-events: none;
@@ -221,9 +221,4 @@
     100% { opacity: 0; transform: translateY(-10px) scale(1.4); }
 }
 
-@media (max-width: 768px) {
-    .pixel-art-character {
-        width: 100px;
-        height: 120px;
-    }
-}
+/* Responsive styling managed dynamically via CSS variables */

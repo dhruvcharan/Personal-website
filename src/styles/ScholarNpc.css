@@ -1,6 +1,6 @@
 .scholar-npc-container {
   position: absolute;
-  bottom: 58px;
+  bottom: var(--ground-offset, 73px);
   transform: translateX(-50%);
   z-index: 9;
   cursor: pointer;
@@ -10,8 +10,8 @@
 }
 
 .scholar-sprite-box {
-  width: 96px;
-  height: 138px;
+  width: var(--scholar-width, 96px);
+  height: var(--scholar-height, 138px);
   position: relative;
   transform-origin: bottom center;
 }
@@ -37,8 +37,8 @@
   bottom: 0px;
   left: 50%;
   transform: translateX(-50%);
-  width: 64px;
-  height: 12px;
+  width: calc(var(--scholar-width, 96px) * 0.67);
+  height: calc(12px * var(--stage-scale, 1.1));
   background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 70%);
   border-radius: 50%;
   pointer-events: none;
@@ -48,10 +48,10 @@
 /* Subtle warm lantern flicker */
 .lantern-glow {
   position: absolute;
-  top: 36px;
-  left: 16px;
-  width: 32px;
-  height: 32px;
+  top: calc(36px * var(--stage-scale, 1.1));
+  left: calc(16px * var(--stage-scale, 1.1));
+  width: calc(32px * var(--stage-scale, 1.1));
+  height: calc(32px * var(--stage-scale, 1.1));
   background: radial-gradient(circle, rgba(255, 200, 80, 0.6) 0%, rgba(200, 110, 20, 0) 75%);
   border-radius: 50%;
   pointer-events: none;

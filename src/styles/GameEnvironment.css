@@ -12,6 +12,14 @@
   background-position: center bottom;
   cursor: url('../assets/wand.png'), auto;
   user-select: none;
+
+  /* Default fallback responsive stage variables */
+  --stage-scale: 1.1;
+  --ground-offset: 73px;
+  --char-width: 128px;
+  --char-height: 142px;
+  --scholar-width: 96px;
+  --scholar-height: 138px;
 }
 
 /* Custom cursor application */
@@ -83,10 +91,10 @@
 /* Walkable stage path overlay */
 .cobblestone-path {
   position: absolute;
-  bottom: 25px;
+  bottom: 0;
   left: 0;
   width: 100%;
-  height: 100px;
+  height: calc(var(--ground-offset, 73px) + 25px);
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.35) 100%);
   pointer-events: none;
 }
