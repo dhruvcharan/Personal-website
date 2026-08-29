@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "/Personal-website/static/css/main.9de25f53.css",
-    "main.js": "/Personal-website/static/js/main.7eaa7dfc.js",
+    "main.css": "/Personal-website/static/css/main.c6f0df6b.css",
+    "main.js": "/Personal-website/static/js/main.b9990ca9.js",
     "static/media/me.jpeg": "/Personal-website/static/media/me.3aa1261b01fd92847916.jpeg",
     "static/media/adventure_town_stage.jpg": "/Personal-website/static/media/adventure_town_stage.b67c0ad2cd1fb4fbecc2.jpg",
     "static/media/mail.png": "/Personal-website/static/media/mail.ebef8ff0fe6c72bb6a0d.png",
@@ -41,11 +41,11 @@
     "static/media/move-right4.png": "/Personal-website/static/media/move-right4.86733c242cf8c55f34fb.png",
     "static/media/character-idle.png": "/Personal-website/static/media/character-idle.d46447d0eb91fabbfc83.png",
     "index.html": "/Personal-website/index.html",
-    "main.9de25f53.css.map": "/Personal-website/static/css/main.9de25f53.css.map",
-    "main.7eaa7dfc.js.map": "/Personal-website/static/js/main.7eaa7dfc.js.map"
+    "main.c6f0df6b.css.map": "/Personal-website/static/css/main.c6f0df6b.css.map",
+    "main.b9990ca9.js.map": "/Personal-website/static/js/main.b9990ca9.js.map"
   },
   "entrypoints": [
-    "static/css/main.9de25f53.css",
-    "static/js/main.7eaa7dfc.js"
+    "static/css/main.c6f0df6b.css",
+    "static/js/main.b9990ca9.js"
   ]
 }
