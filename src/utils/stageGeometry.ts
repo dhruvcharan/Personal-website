@@ -106,3 +106,53 @@ export function calculateStageMetrics(
     jumpHeight
   };
 }
+
+export interface WalkTargetResult {
+  targetLeft: number;      // Character left coordinate (x) to stop at
+  targetCenterX: number;   // Character center (x) on the stage
+  groundY: number;         // Ground Y coordinate (feet baseline)
+  markerY: number;         // Y coordinate for crosshair marker
+}
+
+/**
+ * Calculates the closest reachable point on the cobblestone walk path
+ * for any click point across the viewport.
+ */
+export function getClosestWalkTarget(
+  clickX: number,
+  currentCharX: number,
+  stageMetrics: StageMetrics
+): WalkTargetResult {
+  const { characterWidth, roadBoundaries, scholarObstacleHitbox, groundY } = stageMetrics;
+
+  // Target character left position so that the character centers on clickX
+  let targetLeft = clickX - characterWidth / 2;
+
+  // Clamp within road boundaries
+  const minX = roadBoundaries.left;
+  const maxX = roadBoundaries.right - characterWidth;
+  targetLeft = Math.max(minX, Math.min(maxX, targetLeft));
+
+  // Check obstacle hitboxes (e.g. Scholar NPC)
+  const obs = scholarObstacleHitbox;
+  if (currentCharX + characterWidth <= obs.left) {
+    // Character is to the left of obstacle, cannot pass right past obs.left
+    if (targetLeft > obs.left - characterWidth) {
+      targetLeft = obs.left - characterWidth;
+    }
+  } else if (currentCharX >= obs.right) {
+    // Character is to the right of obstacle, cannot pass left past obs.right
+    if (targetLeft < obs.right) {
+      targetLeft = obs.right;
+    }
+  }
+
+  const targetCenterX = Math.round(targetLeft + characterWidth / 2);
+
+  return {
+    targetLeft: Math.round(targetLeft),
+    targetCenterX,
+    groundY,
+    markerY: groundY - 10,
+  };
+}

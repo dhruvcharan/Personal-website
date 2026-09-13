@@ -11,6 +11,7 @@ import {
   StageMetrics,
   REFERENCE_SCALE,
   SCHOLAR_X_PERCENT,
+  getClosestWalkTarget,
 } from "../utils/stageGeometry";
 import "../styles/GameEnvironment.css";
 
@@ -106,6 +107,11 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const [walkTargetX, setWalkTargetX] = useState<number | null>(null);
   const [targetMarker, setTargetMarker] = useState<TargetMarker | null>(null);
 
+  const scholarObstacles = React.useMemo(
+    () => [stageMetrics.scholarObstacleHitbox],
+    [stageMetrics.scholarObstacleHitbox]
+  );
+
   const characterPositionRef = useRef<Position>(characterPosition);
   const prevViewportWidthRef = useRef<number>(typeof window !== 'undefined' ? window.innerWidth : 1440);
   const roadBoundariesRef = useRef(stageMetrics.roadBoundaries);
@@ -194,7 +200,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     }
   };
 
-  // Stage Floor Click -> Character walks to click location
+  // Stage Floor Click -> Character walks to closest point on the walk path to the click
   const handleStageClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     if (
@@ -209,11 +215,11 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     }
 
     soundFx.playFootstep();
-    const clickX = e.clientX;
-    const clickY = stageMetrics.groundY - 10;
+    const currentX = characterPositionRef.current.x;
+    const walkTarget = getClosestWalkTarget(e.clientX, currentX, stageMetrics);
 
-    setTargetMarker({ x: clickX, y: clickY, id: Date.now() });
-    setWalkTargetX(clickX);
+    setTargetMarker({ x: walkTarget.targetCenterX, y: walkTarget.markerY, id: Date.now() });
+    setWalkTargetX(walkTarget.targetLeft);
     pendingFloorPickupRef.current = false;
     pendingScholarTalkRef.current = false;
     setShowDialogueMenu(false);
@@ -236,13 +242,15 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       pendingScholarTalkRef.current = false;
     } else {
       soundFx.playFootstep();
-      const stopOffset = Math.round(85 * (stageMetrics.stageScale / REFERENCE_SCALE));
-      const stopXPos = currentX < scholarRawX ? scholarRawX - stopOffset : scholarRawX + stopOffset;
+      const obs = stageMetrics.scholarObstacleHitbox;
+      const targetLeft = currentX < scholarRawX
+        ? obs.left - stageMetrics.characterWidth
+        : obs.right;
       pendingScholarTalkRef.current = true;
       setShowDialogueMenu(false);
       setActiveWheel(null);
-      setWalkTargetX(stopXPos);
-      setTargetMarker({ x: scholarRawX, y: stageMetrics.groundY - 10, id: Date.now() });
+      setWalkTargetX(targetLeft);
+      setTargetMarker({ x: Math.round(targetLeft + stageMetrics.characterWidth / 2), y: stageMetrics.groundY - 10, id: Date.now() });
     }
   };
 
@@ -426,9 +434,11 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         if (distance <= stageMetrics.scholarProximityThreshold) {
           speakAsCharacter("Knock it off!");
         } else {
-          const stopOffset = Math.round(85 * (stageMetrics.stageScale / REFERENCE_SCALE));
-          const stopXPos = currentX < scholarRawX ? scholarRawX - stopOffset : scholarRawX + stopOffset;
-          setWalkTargetX(stopXPos);
+          const obs = stageMetrics.scholarObstacleHitbox;
+          const targetLeft = currentX < scholarRawX
+            ? obs.left - stageMetrics.characterWidth
+            : obs.right;
+          setWalkTargetX(targetLeft);
           setTimeout(() => {
             speakAsCharacter("Knock it off!");
           }, 1200);
@@ -440,11 +450,13 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
           setShowDialogueMenu(true);
           pendingScholarTalkRef.current = false;
         } else {
-          const stopOffset = Math.round(85 * (stageMetrics.stageScale / REFERENCE_SCALE));
-          const stopXPos = currentX < scholarRawX ? scholarRawX - stopOffset : scholarRawX + stopOffset;
+          const obs = stageMetrics.scholarObstacleHitbox;
+          const targetLeft = currentX < scholarRawX
+            ? obs.left - stageMetrics.characterWidth
+            : obs.right;
           pendingScholarTalkRef.current = true;
           setShowDialogueMenu(false);
-          setWalkTargetX(stopXPos);
+          setWalkTargetX(targetLeft);
         }
       }
     }
@@ -688,7 +700,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
             onArrival={handleArrival}
             onPositionUpdate={updateCharacterPosition}
             roadBoundaries={stageMetrics.roadBoundaries}
-            obstacles={[stageMetrics.scholarObstacleHitbox]}
+            obstacles={scholarObstacles}
             isOpeningSatchel={isOpeningSatchel}
             speechText={characterSpeech}
           />

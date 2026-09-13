@@ -91,6 +91,38 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
   const lastReportedPosition = useRef<Position>({ x: 0, y: 0 });
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Keep latest mutable props in refs to prevent tearing down rAF loops on re-renders
+  const roadBoundariesRef = useRef<RoadBoundaries>(roadBoundaries);
+  const obstaclesRef = useRef<ObstacleHitbox[]>(obstacles);
+  const moveSpeedPpsRef = useRef<number>(moveSpeedPps);
+  const baseYPositionRef = useRef<number>(baseYPosition);
+  const stageScaleRef = useRef<number>(stageScale);
+  const onArrivalRef = useRef<(() => void) | undefined>(onArrival);
+
+  useEffect(() => {
+    roadBoundariesRef.current = roadBoundaries;
+  }, [roadBoundaries]);
+
+  useEffect(() => {
+    obstaclesRef.current = obstacles;
+  }, [obstacles]);
+
+  useEffect(() => {
+    moveSpeedPpsRef.current = moveSpeedPps;
+  }, [moveSpeedPps]);
+
+  useEffect(() => {
+    baseYPositionRef.current = baseYPosition;
+  }, [baseYPosition]);
+
+  useEffect(() => {
+    stageScaleRef.current = stageScale;
+  }, [stageScale]);
+
+  useEffect(() => {
+    onArrivalRef.current = onArrival;
+  }, [onArrival]);
+
   // Sync vertical baseline with parent whenever screen dimensions/metrics update
   useEffect(() => {
     if (!isJumping) {
@@ -111,28 +143,22 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
 
   const clampXPosition = (prevX: number, nextX: number): number => {
     const charW = getCharWidth();
-    const minX = roadBoundaries.left;
-    const maxX = roadBoundaries.right - charW;
+    const minX = roadBoundariesRef.current.left;
+    const maxX = roadBoundariesRef.current.right - charW;
     let clamped = Math.max(minX, Math.min(maxX, nextX));
 
-    const halfW = charW / 2;
-    const charCenterX = prevX + halfW;
-    const nextCenterX = clamped + halfW;
-
     // Obstacle Hitbox Collision Checks
-    for (const obs of obstacles) {
-      if (nextCenterX > charCenterX) {
-        // Moving right -> check if crossing obstacle left boundary
-        if (charCenterX <= obs.left && nextCenterX > obs.left) {
-          clamped = obs.left - halfW;
-          break;
-        }
-      } else if (nextCenterX < charCenterX) {
-        // Moving left -> check if crossing obstacle right boundary
-        if (charCenterX >= obs.right && nextCenterX < obs.right) {
-          clamped = obs.right - halfW;
-          break;
-        }
+    for (const obs of obstaclesRef.current) {
+      const prevRight = prevX + charW;
+      const nextRight = clamped + charW;
+
+      // Moving right -> check if crossing into obstacle left boundary
+      if (prevRight <= obs.left && nextRight > obs.left) {
+        clamped = obs.left - charW;
+      }
+      // Moving left -> check if crossing into obstacle right boundary
+      else if (prevX >= obs.right && clamped < obs.right) {
+        clamped = obs.right;
       }
     }
 
@@ -198,6 +224,13 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
 
   // Delta-time based Keyboard Movement
   const startKeyboardMovement = () => {
+    // Cancel any active point & click walking when keyboard input is detected
+    if (targetWalkFrameRef.current !== null) {
+      cancelAnimationFrame(targetWalkFrameRef.current);
+      targetWalkFrameRef.current = null;
+    }
+    lastWalkTimestampRef.current = null;
+
     if (movementFrameRef.current !== null) {
       cancelAnimationFrame(movementFrameRef.current);
     }
@@ -211,7 +244,10 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
       const dt = Math.min((timestamp - lastKeyboardTimestampRef.current) / 1000, 0.1);
       lastKeyboardTimestampRef.current = timestamp;
 
-      const stepDistance = moveSpeedPps * dt;
+      const currentSpeed = moveSpeedPpsRef.current;
+      const currentScale = stageScaleRef.current;
+      const currentBaseY = baseYPositionRef.current;
+      const stepDistance = currentSpeed * dt;
 
       setCurrentPosition((prev) => {
         let rawNextX = prev.x;
@@ -229,14 +265,14 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
         }
 
         keyboardAccumulatedDistanceRef.current += stepDistance;
-        const dustThreshold = 45 * (stageScale / REFERENCE_SCALE);
+        const dustThreshold = 45 * (currentScale / REFERENCE_SCALE);
         if (keyboardAccumulatedDistanceRef.current >= dustThreshold) {
           keyboardAccumulatedDistanceRef.current = 0;
           spawnDust(prev.x, prev.y);
         }
 
         const clampedX = clampXPosition(prev.x, rawNextX);
-        return { x: clampedX, y: isJumping ? prev.y : baseYPosition };
+        return { x: clampedX, y: isJumping ? prev.y : currentBaseY };
       });
 
       if (keyPressedRef.current.left || keyPressedRef.current.right) {
@@ -251,7 +287,14 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
 
   // Delta-time based Point & Click Walk-To Target Loop
   useEffect(() => {
-    if (targetX === null || targetX === undefined) return;
+    if (targetX === null || targetX === undefined) {
+      if (targetWalkFrameRef.current !== null) {
+        cancelAnimationFrame(targetWalkFrameRef.current);
+        targetWalkFrameRef.current = null;
+      }
+      lastWalkTimestampRef.current = null;
+      return;
+    }
 
     if (targetWalkFrameRef.current !== null) {
       cancelAnimationFrame(targetWalkFrameRef.current);
@@ -260,6 +303,8 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
     lastWalkTimestampRef.current = null;
     walkAccumulatedDistanceRef.current = 0;
 
+    const targetVal = targetX;
+
     const stepTargetWalk = (timestamp: number) => {
       if (lastWalkTimestampRef.current === null) {
         lastWalkTimestampRef.current = timestamp;
@@ -267,23 +312,26 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
       const dt = Math.min((timestamp - lastWalkTimestampRef.current) / 1000, 0.1);
       lastWalkTimestampRef.current = timestamp;
 
-      const stepDistance = moveSpeedPps * dt;
+      const currentSpeed = moveSpeedPpsRef.current;
+      const currentScale = stageScaleRef.current;
+      const currentBaseY = baseYPositionRef.current;
+      const stepDistance = currentSpeed * dt;
 
       setCurrentPosition((prev) => {
-        const dx = targetX - prev.x;
+        const dx = targetVal - prev.x;
         const dist = Math.abs(dx);
 
-        if (dist <= stepDistance) {
+        if (dist <= Math.max(stepDistance, 1.5)) {
           setAnimation("idle");
           if (targetWalkFrameRef.current !== null) {
             cancelAnimationFrame(targetWalkFrameRef.current);
             targetWalkFrameRef.current = null;
           }
           lastWalkTimestampRef.current = null;
-          if (onArrival) {
-            setTimeout(onArrival, 20);
+          if (onArrivalRef.current) {
+            setTimeout(onArrivalRef.current, 20);
           }
-          return { x: clampXPosition(prev.x, targetX), y: baseYPosition };
+          return { x: clampXPosition(prev.x, targetVal), y: currentBaseY };
         }
 
         const newDirection = dx > 0 ? "right" : "left";
@@ -291,7 +339,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
         setAnimation(`move-${newDirection}`);
 
         walkAccumulatedDistanceRef.current += stepDistance;
-        const dustThreshold = 45 * (stageScale / REFERENCE_SCALE);
+        const dustThreshold = 45 * (currentScale / REFERENCE_SCALE);
         if (walkAccumulatedDistanceRef.current >= dustThreshold) {
           walkAccumulatedDistanceRef.current = 0;
           spawnDust(prev.x, prev.y);
@@ -308,13 +356,13 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
             targetWalkFrameRef.current = null;
           }
           lastWalkTimestampRef.current = null;
-          if (onArrival) {
-            setTimeout(onArrival, 20);
+          if (onArrivalRef.current) {
+            setTimeout(onArrivalRef.current, 20);
           }
-          return { x: clampedX, y: baseYPosition };
+          return { x: clampedX, y: currentBaseY };
         }
 
-        return { x: clampedX, y: baseYPosition };
+        return { x: clampedX, y: currentBaseY };
       });
 
       targetWalkFrameRef.current = requestAnimationFrame(stepTargetWalk);
@@ -329,7 +377,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
       }
       lastWalkTimestampRef.current = null;
     };
-  }, [targetX, roadBoundaries, obstacles, moveSpeedPps, baseYPosition, stageScale]);
+  }, [targetX]);
 
   // Keyboard Listeners
   useEffect(() => {
