@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import PixelArtCharacter from "./PixelArtCharacter";
+import PixelArtCharacter, { WalkTarget } from "./PixelArtCharacter";
 import InteractiveSprite from "./InteractiveSprite";
 import ScholarNpc from "./ScholarNpc";
 import DialogueMenu from "./DialogueMenu";
@@ -104,7 +104,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     y: stageMetrics.characterBaseY
   }));
 
-  const [walkTargetX, setWalkTargetX] = useState<number | null>(null);
+  const [walkTarget, setWalkTarget] = useState<WalkTarget | null>(null);
   const [targetMarker, setTargetMarker] = useState<TargetMarker | null>(null);
 
   const scholarObstacles = React.useMemo(
@@ -157,7 +157,6 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     unknown: []
   };
 
-  // Recompute responsive metrics and sync positions seamlessly on resize / monitor switch
   useEffect(() => {
     const handleResize = () => {
       const newMetrics = calculateStageMetrics(window.innerWidth, window.innerHeight);
@@ -216,10 +215,11 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
 
     soundFx.playFootstep();
     const currentX = characterPositionRef.current.x;
-    const walkTarget = getClosestWalkTarget(e.clientX, currentX, stageMetrics);
+    const walkTargetPos = getClosestWalkTarget(e.clientX, currentX, stageMetrics);
 
-    setTargetMarker({ x: walkTarget.targetCenterX, y: walkTarget.markerY, id: Date.now() });
-    setWalkTargetX(walkTarget.targetLeft);
+    const targetObj: WalkTarget = { x: walkTargetPos.targetLeft, id: Date.now() };
+    setTargetMarker({ x: walkTargetPos.targetCenterX, y: walkTargetPos.markerY, id: targetObj.id });
+    setWalkTarget(targetObj);
     pendingFloorPickupRef.current = false;
     pendingScholarTalkRef.current = false;
     setShowDialogueMenu(false);
@@ -246,17 +246,18 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       const targetLeft = currentX < scholarRawX
         ? obs.left - stageMetrics.characterWidth
         : obs.right;
+      const targetObj: WalkTarget = { x: targetLeft, id: Date.now() };
       pendingScholarTalkRef.current = true;
       setShowDialogueMenu(false);
       setActiveWheel(null);
-      setWalkTargetX(targetLeft);
-      setTargetMarker({ x: Math.round(targetLeft + stageMetrics.characterWidth / 2), y: stageMetrics.groundY - 10, id: Date.now() });
+      setWalkTarget(targetObj);
+      setTargetMarker({ x: Math.round(targetLeft + stageMetrics.characterWidth / 2), y: stageMetrics.groundY - 10, id: targetObj.id });
     }
   };
 
   // Arrival handler
   const handleArrival = () => {
-    setWalkTargetX(null);
+    setWalkTarget(null);
     setTargetMarker(null);
 
     const currentX = characterPositionRef.current.x;
@@ -332,7 +333,6 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     }
   };
 
-  // Contextual SCUMM Verb Wheel targets for each inventory item
   const getInventoryItemTarget = (item: InventoryItem): InteractiveTarget => {
     switch (item.id) {
       case 'blog':
@@ -438,7 +438,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
           const targetLeft = currentX < scholarRawX
             ? obs.left - stageMetrics.characterWidth
             : obs.right;
-          setWalkTargetX(targetLeft);
+          setWalkTarget({ x: targetLeft, id: Date.now() });
           setTimeout(() => {
             speakAsCharacter("Knock it off!");
           }, 1200);
@@ -456,7 +456,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
             : obs.right;
           pendingScholarTalkRef.current = true;
           setShowDialogueMenu(false);
-          setWalkTargetX(targetLeft);
+          setWalkTarget({ x: targetLeft, id: Date.now() });
         }
       }
     }
@@ -480,7 +480,6 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     }
   });
 
-  // Satchel Pouch Open / Close
   const handleSatchelClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     soundFx.playSatchel();
@@ -560,13 +559,12 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       } as React.CSSProperties}
       onClick={handleStageClick}
     >
-      {/* Title Header Banner */}
+      {/*   header banner   */}
       <div className="game-header-banner">
         <h1 className="game-title">Dhruv Charan</h1>
       </div>
 
-      {/* SCUMM Status Plaque at Top Center */}
-      <div className="scumm-top-plaque">
+      <div className="scumm-top-plaque top-plaque">
         <span className="plaque-text">{statusLineText}</span>
       </div>
 
@@ -664,7 +662,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         )}
       </div>
 
-      {/* Curse of Monkey Island Interaction Wheel Overlay */}
+      {/*  Overlay  */}
       {activeWheel && (
         <InteractionWheel
           position={activeWheel.position}
@@ -692,7 +690,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         <div className="character-container">
           <PixelArtCharacter
             position={characterPosition}
-            targetX={walkTargetX}
+            targetX={walkTarget}
             baseYPosition={stageMetrics.characterBaseY}
             stageScale={stageMetrics.stageScale}
             moveSpeedPps={stageMetrics.moveSpeedPps}

@@ -18,10 +18,15 @@ export interface ObstacleHitbox {
   right: number;
 }
 
+export interface WalkTarget {
+  x: number;
+  id: number;
+}
+
 interface PixelArtCharacterProps {
   selectedLink?: string | null;
   position: Position;
-  targetX?: number | null;
+  targetX?: number | WalkTarget | null;
   baseYPosition: number;
   stageScale?: number;
   moveSpeedPps?: number;
@@ -90,6 +95,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
   const initialYPositionRef = useRef<number>(baseYPosition);
   const lastReportedPosition = useRef<Position>({ x: 0, y: 0 });
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const currentPositionRef = useRef<Position>(currentPosition);
 
   // Keep latest mutable props in refs to prevent tearing down rAF loops on re-renders
   const roadBoundariesRef = useRef<RoadBoundaries>(roadBoundaries);
@@ -98,6 +104,10 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
   const baseYPositionRef = useRef<number>(baseYPosition);
   const stageScaleRef = useRef<number>(stageScale);
   const onArrivalRef = useRef<(() => void) | undefined>(onArrival);
+
+  useEffect(() => {
+    currentPositionRef.current = currentPosition;
+  }, [currentPosition]);
 
   useEffect(() => {
     roadBoundariesRef.current = roadBoundaries;
@@ -126,6 +136,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
   // Sync vertical baseline with parent whenever screen dimensions/metrics update
   useEffect(() => {
     if (!isJumping) {
+      currentPositionRef.current.y = baseYPosition;
       setCurrentPosition((prev) => ({
         ...prev,
         y: baseYPosition,
@@ -240,6 +251,8 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
     const moveCharacter = (timestamp: number) => {
       if (lastKeyboardTimestampRef.current === null) {
         lastKeyboardTimestampRef.current = timestamp;
+        movementFrameRef.current = requestAnimationFrame(moveCharacter);
+        return;
       }
       const dt = Math.min((timestamp - lastKeyboardTimestampRef.current) / 1000, 0.1);
       lastKeyboardTimestampRef.current = timestamp;
@@ -249,31 +262,32 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
       const currentBaseY = baseYPositionRef.current;
       const stepDistance = currentSpeed * dt;
 
-      setCurrentPosition((prev) => {
-        let rawNextX = prev.x;
+      const curX = currentPositionRef.current.x;
+      let rawNextX = curX;
 
-        if (keyPressedRef.current.left) {
-          rawNextX -= stepDistance;
-          setDirection("left");
-          setAnimation("move-left");
-        } else if (keyPressedRef.current.right) {
-          rawNextX += stepDistance;
-          setDirection("right");
-          setAnimation("move-right");
-        } else {
-          setAnimation("idle");
-        }
+      if (keyPressedRef.current.left) {
+        rawNextX -= stepDistance;
+        setDirection("left");
+        setAnimation("move-left");
+      } else if (keyPressedRef.current.right) {
+        rawNextX += stepDistance;
+        setDirection("right");
+        setAnimation("move-right");
+      } else {
+        setAnimation("idle");
+      }
 
-        keyboardAccumulatedDistanceRef.current += stepDistance;
-        const dustThreshold = 45 * (currentScale / REFERENCE_SCALE);
-        if (keyboardAccumulatedDistanceRef.current >= dustThreshold) {
-          keyboardAccumulatedDistanceRef.current = 0;
-          spawnDust(prev.x, prev.y);
-        }
+      keyboardAccumulatedDistanceRef.current += stepDistance;
+      const dustThreshold = 45 * (currentScale / REFERENCE_SCALE);
+      if (keyboardAccumulatedDistanceRef.current >= dustThreshold) {
+        keyboardAccumulatedDistanceRef.current = 0;
+        spawnDust(curX, isJumping ? currentPositionRef.current.y : currentBaseY);
+      }
 
-        const clampedX = clampXPosition(prev.x, rawNextX);
-        return { x: clampedX, y: isJumping ? prev.y : currentBaseY };
-      });
+      const clampedX = clampXPosition(curX, rawNextX);
+      const nextY = isJumping ? currentPositionRef.current.y : currentBaseY;
+      currentPositionRef.current = { x: clampedX, y: nextY };
+      setCurrentPosition({ x: clampedX, y: nextY });
 
       if (keyPressedRef.current.left || keyPressedRef.current.right) {
         movementFrameRef.current = requestAnimationFrame(moveCharacter);
@@ -287,7 +301,9 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
 
   // Delta-time based Point & Click Walk-To Target Loop
   useEffect(() => {
-    if (targetX === null || targetX === undefined) {
+    const targetVal = typeof targetX === "object" && targetX !== null ? targetX.x : targetX;
+
+    if (targetVal === null || targetVal === undefined) {
       if (targetWalkFrameRef.current !== null) {
         cancelAnimationFrame(targetWalkFrameRef.current);
         targetWalkFrameRef.current = null;
@@ -303,11 +319,12 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
     lastWalkTimestampRef.current = null;
     walkAccumulatedDistanceRef.current = 0;
 
-    const targetVal = targetX;
-
     const stepTargetWalk = (timestamp: number) => {
+      // First frame initialization: capture timestamp without stepping to avoid dt=0 false collision
       if (lastWalkTimestampRef.current === null) {
         lastWalkTimestampRef.current = timestamp;
+        targetWalkFrameRef.current = requestAnimationFrame(stepTargetWalk);
+        return;
       }
       const dt = Math.min((timestamp - lastWalkTimestampRef.current) / 1000, 0.1);
       lastWalkTimestampRef.current = timestamp;
@@ -317,54 +334,52 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
       const currentBaseY = baseYPositionRef.current;
       const stepDistance = currentSpeed * dt;
 
-      setCurrentPosition((prev) => {
-        const dx = targetVal - prev.x;
-        const dist = Math.abs(dx);
+      const curX = currentPositionRef.current.x;
+      const dx = targetVal - curX;
+      const dist = Math.abs(dx);
 
-        if (dist <= Math.max(stepDistance, 1.5)) {
-          setAnimation("idle");
-          if (targetWalkFrameRef.current !== null) {
-            cancelAnimationFrame(targetWalkFrameRef.current);
-            targetWalkFrameRef.current = null;
-          }
-          lastWalkTimestampRef.current = null;
-          if (onArrivalRef.current) {
-            setTimeout(onArrivalRef.current, 20);
-          }
-          return { x: clampXPosition(prev.x, targetVal), y: currentBaseY };
+      if (dist <= Math.max(stepDistance, 1.5)) {
+        const finalX = clampXPosition(curX, targetVal);
+        currentPositionRef.current = { x: finalX, y: currentBaseY };
+        setCurrentPosition({ x: finalX, y: currentBaseY });
+        setAnimation("idle");
+        targetWalkFrameRef.current = null;
+        lastWalkTimestampRef.current = null;
+        if (onArrivalRef.current) {
+          setTimeout(onArrivalRef.current, 20);
         }
+        return;
+      }
 
-        const newDirection = dx > 0 ? "right" : "left";
-        setDirection(newDirection);
-        setAnimation(`move-${newDirection}`);
+      const newDirection = dx > 0 ? "right" : "left";
+      setDirection(newDirection);
+      setAnimation(`move-${newDirection}`);
 
-        walkAccumulatedDistanceRef.current += stepDistance;
-        const dustThreshold = 45 * (currentScale / REFERENCE_SCALE);
-        if (walkAccumulatedDistanceRef.current >= dustThreshold) {
-          walkAccumulatedDistanceRef.current = 0;
-          spawnDust(prev.x, prev.y);
+      walkAccumulatedDistanceRef.current += stepDistance;
+      const dustThreshold = 45 * (currentScale / REFERENCE_SCALE);
+      if (walkAccumulatedDistanceRef.current >= dustThreshold) {
+        walkAccumulatedDistanceRef.current = 0;
+        spawnDust(curX, currentBaseY);
+      }
+
+      const rawStepX = curX + (dx > 0 ? stepDistance : -stepDistance);
+      const clampedX = clampXPosition(curX, rawStepX);
+
+      // If collision or boundary stopped us from moving further toward target, arrive!
+      if (stepDistance > 0.5 && Math.abs(clampedX - curX) < 0.2) {
+        currentPositionRef.current = { x: clampedX, y: currentBaseY };
+        setCurrentPosition({ x: clampedX, y: currentBaseY });
+        setAnimation("idle");
+        targetWalkFrameRef.current = null;
+        lastWalkTimestampRef.current = null;
+        if (onArrivalRef.current) {
+          setTimeout(onArrivalRef.current, 20);
         }
+        return;
+      }
 
-        const rawStepX = prev.x + (dx > 0 ? stepDistance : -stepDistance);
-        const clampedX = clampXPosition(prev.x, rawStepX);
-
-        // If collision or boundary stopped us from moving further toward target, arrive!
-        if (Math.abs(clampedX - prev.x) < 0.2) {
-          setAnimation("idle");
-          if (targetWalkFrameRef.current !== null) {
-            cancelAnimationFrame(targetWalkFrameRef.current);
-            targetWalkFrameRef.current = null;
-          }
-          lastWalkTimestampRef.current = null;
-          if (onArrivalRef.current) {
-            setTimeout(onArrivalRef.current, 20);
-          }
-          return { x: clampedX, y: currentBaseY };
-        }
-
-        return { x: clampedX, y: currentBaseY };
-      });
-
+      currentPositionRef.current = { x: clampedX, y: currentBaseY };
+      setCurrentPosition({ x: clampedX, y: currentBaseY });
       targetWalkFrameRef.current = requestAnimationFrame(stepTargetWalk);
     };
 
@@ -438,6 +453,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
       }
 
       const newY = initialYPositionRef.current - jumpOffset;
+      currentPositionRef.current.y = newY;
       setCurrentPosition((prev) => ({ ...prev, y: newY }));
 
       if (progress < 1) {
@@ -456,6 +472,7 @@ const PixelArtCharacter: React.FC<PixelArtCharacterProps> = ({
       jumpFrameRef.current = null;
     }
 
+    currentPositionRef.current.y = baseYPosition;
     setCurrentPosition((prev) => ({ ...prev, y: baseYPosition }));
     spawnDust(currentPosition.x, baseYPosition);
 
