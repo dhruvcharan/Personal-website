@@ -72,7 +72,7 @@ export function calculateStageMetrics(
   const scholarX = viewportWidth * SCHOLAR_X_PERCENT;
   
   const scaleRatio = stageScale / REFERENCE_SCALE;
-  const scholarProximityThreshold = Math.round(130 * scaleRatio);
+  const scholarProximityThreshold = Math.round(70 * scaleRatio);
   const scholarObstacleHalfWidth = Math.round(45 * scaleRatio);
 
   const roadBoundaries = {
@@ -155,4 +155,20 @@ export function getClosestWalkTarget(
     groundY,
     markerY: groundY - 10,
   };
+}
+
+/**
+ * Calculates the horizontal gap in pixels between the character and the scholar obstacle.
+ * Returns 0 if the character is touching or overlapping the obstacle hitbox.
+ */
+export function getDistanceToScholar(characterLeft: number, stageMetrics: StageMetrics): number {
+  const charRight = characterLeft + stageMetrics.characterWidth;
+  const { left: obsLeft, right: obsRight } = stageMetrics.scholarObstacleHitbox;
+
+  if (charRight < obsLeft) {
+    return obsLeft - charRight;
+  } else if (characterLeft > obsRight) {
+    return characterLeft - obsRight;
+  }
+  return 0;
 }

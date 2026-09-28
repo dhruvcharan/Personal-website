@@ -12,6 +12,7 @@ import {
   REFERENCE_SCALE,
   SCHOLAR_X_PERCENT,
   getClosestWalkTarget,
+  getDistanceToScholar,
 } from "../utils/stageGeometry";
 import "../styles/GameEnvironment.css";
 
@@ -117,14 +118,20 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const roadBoundariesRef = useRef(stageMetrics.roadBoundaries);
   const pendingFloorPickupRef = useRef<boolean>(false);
   const pendingScholarTalkRef = useRef<boolean>(false);
+  const pendingScholarShoveRef = useRef<boolean>(false);
   const dialogueTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const characterSpeechTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const scholarSpeechTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const speakAsCharacter = (text: string | null, autoClearDuration: number = 2500) => {
     if (characterSpeechTimerRef.current) {
       clearTimeout(characterSpeechTimerRef.current);
       characterSpeechTimerRef.current = null;
+    }
+    if (scholarSpeechTimerRef.current) {
+      clearTimeout(scholarSpeechTimerRef.current);
+      scholarSpeechTimerRef.current = null;
     }
     setScholarSpeech(null);
     setCharacterSpeech(text);
@@ -138,14 +145,25 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     }
   };
 
-  const speakAsScholar = (text: string | null) => {
+  const speakAsScholar = (text: string | null, autoClearDuration: number = 2500) => {
+    if (scholarSpeechTimerRef.current) {
+      clearTimeout(scholarSpeechTimerRef.current);
+      scholarSpeechTimerRef.current = null;
+    }
     if (characterSpeechTimerRef.current) {
       clearTimeout(characterSpeechTimerRef.current);
       characterSpeechTimerRef.current = null;
     }
     setCharacterSpeech(null);
     setScholarSpeech(text);
-    if (text) soundFx.playTalk();
+    if (text) {
+      soundFx.playTalk();
+      if (autoClearDuration > 0) {
+        scholarSpeechTimerRef.current = setTimeout(() => {
+          setScholarSpeech(null);
+        }, autoClearDuration);
+      }
+    }
   };
 
   const spriteCollections = {
@@ -188,13 +206,21 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (dialogueTimerRef.current) clearTimeout(dialogueTimerRef.current);
+      if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+      if (characterSpeechTimerRef.current) clearTimeout(characterSpeechTimerRef.current);
+      if (scholarSpeechTimerRef.current) clearTimeout(scholarSpeechTimerRef.current);
+    };
+  }, []);
+
   const updateCharacterPosition = (pos: Position) => {
     setCharacterPosition(pos);
     characterPositionRef.current = pos;
 
     // Automatically close dialogue menu if the player walks away from the NPC
-    const scholarRawX = stageMetrics.scholarX;
-    if (showDialogueMenu && Math.abs(pos.x - scholarRawX) > stageMetrics.scholarProximityThreshold + 40) {
+    if (showDialogueMenu && getDistanceToScholar(pos.x, stageMetrics) > stageMetrics.scholarProximityThreshold + 40) {
       setShowDialogueMenu(false);
     }
   };
@@ -222,6 +248,12 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     setWalkTarget(targetObj);
     pendingFloorPickupRef.current = false;
     pendingScholarTalkRef.current = false;
+    pendingScholarShoveRef.current = false;
+    if (dialogueTimerRef.current) {
+      clearTimeout(dialogueTimerRef.current);
+      dialogueTimerRef.current = null;
+    }
+    setIsSpeakingDialogue(false);
     setShowDialogueMenu(false);
     setActiveWheel(null);
 
@@ -235,9 +267,12 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     e.stopPropagation();
     const currentX = characterPositionRef.current.x;
     const scholarRawX = stageMetrics.scholarX;
-    const distance = Math.abs(currentX - scholarRawX);
+    const distance = getDistanceToScholar(currentX, stageMetrics);
+
+    pendingScholarShoveRef.current = false;
 
     if (distance <= stageMetrics.scholarProximityThreshold) {
+      setIsSpeakingDialogue(false);
       setShowDialogueMenu(true);
       pendingScholarTalkRef.current = false;
     } else {
@@ -248,6 +283,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         : obs.right;
       const targetObj: WalkTarget = { x: targetLeft, id: Date.now() };
       pendingScholarTalkRef.current = true;
+      setIsSpeakingDialogue(false);
       setShowDialogueMenu(false);
       setActiveWheel(null);
       setWalkTarget(targetObj);
@@ -261,12 +297,20 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     setTargetMarker(null);
 
     const currentX = characterPositionRef.current.x;
-    const scholarRawX = stageMetrics.scholarX;
+    const distance = getDistanceToScholar(currentX, stageMetrics);
 
     if (pendingScholarTalkRef.current) {
       pendingScholarTalkRef.current = false;
-      if (Math.abs(currentX - scholarRawX) <= stageMetrics.scholarProximityThreshold + 40) {
+      if (distance <= stageMetrics.scholarProximityThreshold + 40) {
+        setIsSpeakingDialogue(false);
         setShowDialogueMenu(true);
+      }
+    }
+
+    if (pendingScholarShoveRef.current) {
+      pendingScholarShoveRef.current = false;
+      if (distance <= stageMetrics.scholarProximityThreshold + 40) {
+        speakAsScholar("Knock it off!");
       }
     }
   };
@@ -287,7 +331,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       // Step 2: Brief pause, then show Archivist reply
       dialogueTimerRef.current = setTimeout(() => {
         const reply = Array.isArray(option.npcResponse) ? option.npcResponse.join(' ') : option.npcResponse;
-        speakAsScholar(reply);
+        speakAsScholar(reply, 3400);
 
         // Step 3: Wait for Archivist text duration, then clear and re-open dialogue menu
         dialogueTimerRef.current = setTimeout(() => {
@@ -296,8 +340,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
 
           if (option.id !== 'exit') {
             const curX = characterPositionRef.current.x;
-            const schX = stageMetrics.scholarX;
-            if (Math.abs(curX - schX) <= stageMetrics.scholarProximityThreshold + 40) {
+            if (getDistanceToScholar(curX, stageMetrics) <= stageMetrics.scholarProximityThreshold + 40) {
               setShowDialogueMenu(true);
             }
           }
@@ -428,25 +471,28 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     onExecuteVerb: (verb: VerbType) => {
       const currentX = characterPositionRef.current.x;
       const scholarRawX = stageMetrics.scholarX;
-      const distance = Math.abs(currentX - scholarRawX);
+      const distance = getDistanceToScholar(currentX, stageMetrics);
 
       if (verb === 'hand') {
+        pendingScholarTalkRef.current = false;
         if (distance <= stageMetrics.scholarProximityThreshold) {
-          speakAsCharacter("Knock it off!");
+          pendingScholarShoveRef.current = false;
+          speakAsScholar("Knock it off!");
         } else {
           const obs = stageMetrics.scholarObstacleHitbox;
           const targetLeft = currentX < scholarRawX
             ? obs.left - stageMetrics.characterWidth
             : obs.right;
+          pendingScholarShoveRef.current = true;
           setWalkTarget({ x: targetLeft, id: Date.now() });
-          setTimeout(() => {
-            speakAsCharacter("Knock it off!");
-          }, 1200);
+          setTargetMarker({ x: Math.round(targetLeft + stageMetrics.characterWidth / 2), y: stageMetrics.groundY - 10, id: Date.now() });
         }
       } else if (verb === 'eye') {
         speakAsCharacter("He looks like he knows a thing or two about a thing or two.");
       } else if (verb === 'mouth') {
+        pendingScholarShoveRef.current = false;
         if (distance <= stageMetrics.scholarProximityThreshold) {
+          setIsSpeakingDialogue(false);
           setShowDialogueMenu(true);
           pendingScholarTalkRef.current = false;
         } else {
@@ -455,8 +501,10 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
             ? obs.left - stageMetrics.characterWidth
             : obs.right;
           pendingScholarTalkRef.current = true;
+          setIsSpeakingDialogue(false);
           setShowDialogueMenu(false);
           setWalkTarget({ x: targetLeft, id: Date.now() });
+          setTargetMarker({ x: Math.round(targetLeft + stageMetrics.characterWidth / 2), y: stageMetrics.groundY - 10, id: Date.now() });
         }
       }
     }
@@ -680,7 +728,14 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       {showDialogueMenu && (
         <DialogueMenu
           onSelectOption={handleDialogueSelect}
-          onClose={() => setShowDialogueMenu(false)}
+          onClose={() => {
+            if (dialogueTimerRef.current) {
+              clearTimeout(dialogueTimerRef.current);
+              dialogueTimerRef.current = null;
+            }
+            setIsSpeakingDialogue(false);
+            setShowDialogueMenu(false);
+          }}
           isSpeaking={isSpeakingDialogue}
         />
       )}
