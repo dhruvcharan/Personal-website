@@ -27,6 +27,7 @@
 .game-environment button,
 .game-environment .ground-collectible-item,
 .game-environment .world-fixture-station,
+.game-environment .world-stage-hotspot,
 .game-environment .scholar-npc-container {
   cursor: url('../assets/wand.png'), pointer !important;
 }
@@ -77,6 +78,39 @@
   text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 2px 0 #000, 0 -2px 0 #000, 2px 0 0 #000, -2px 0 0 #000;
 }
 
+/* Discrete Retro Audio Toggle */
+.audio-mute-btn {
+  position: fixed;
+  top: 18px;
+  right: 24px;
+  z-index: 300;
+  background: transparent;
+  border: none;
+  outline: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  color: var(--color-amber);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 0 #000;
+  opacity: 0.8;
+  transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease;
+}
+
+.audio-mute-btn:hover {
+  opacity: 1;
+  color: var(--color-gold-bright);
+  transform: scale(1.08);
+}
+
+.audio-mute-icon {
+  font-size: 14px;
+  filter: drop-shadow(2px 2px 0 #000);
+}
+
 /* Stage Layer */
 .layer-stage {
   position: absolute;
@@ -86,6 +120,241 @@
   height: 100%;
   z-index: 4;
   pointer-events: auto;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   AMBIENT LIVING STAGE EFFECTS (Candlelight, Chimney Smoke, Stars, Mist)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.ambient-stage-effects {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  overflow: hidden;
+}
+
+/* Starlight Twinkle */
+.ambient-star-twinkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  transform: translate(-50%, -50%);
+  background: #fff9d6;
+  box-shadow: 0 0 8px 2px rgba(255, 240, 170, 0.85);
+  image-rendering: pixelated;
+  animation: starTwinklePulse 3.2s infinite ease-in-out;
+}
+
+@keyframes starTwinklePulse {
+  0%, 100% { opacity: 0.2; transform: translate(-50%, -50%) scale(0.75); }
+  50% { opacity: 0.95; transform: translate(-50%, -50%) scale(1.35); }
+}
+
+/* Tavern Chimney Pixel Smoke Plume */
+.ambient-chimney-emitter {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+
+.chimney-smoke-puff {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  background: rgba(185, 195, 220, 0.28);
+  box-shadow: 4px -4px 0 rgba(160, 172, 202, 0.22);
+  image-rendering: pixelated;
+  animation: chimneySmokeRise 6.4s infinite linear;
+}
+
+.chimney-smoke-puff.puff-1 { animation-delay: 0s; }
+.chimney-smoke-puff.puff-2 { animation-delay: 1.6s; left: 4px; }
+.chimney-smoke-puff.puff-3 { animation-delay: 3.2s; left: -3px; }
+.chimney-smoke-puff.puff-4 { animation-delay: 4.8s; left: 2px; }
+
+@keyframes chimneySmokeRise {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.8);
+  }
+  20% {
+    opacity: 0.45;
+  }
+  65% {
+    opacity: 0.25;
+    transform: translate(-18px, -42px) scale(1.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-34px, -76px) scale(2.3);
+  }
+}
+
+/* Warm Candlelight Window Flickers */
+.ambient-window-glow {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 196, 77, 0.28) 0%,
+    rgba(255, 136, 25, 0.12) 55%,
+    rgba(0, 0, 0, 0) 80%
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.glow-tavern {
+  animation: candleFlickerA 2.7s infinite alternate ease-in-out;
+}
+
+.glow-tavern-alt {
+  animation: candleFlickerB 3.1s infinite alternate ease-in-out;
+}
+
+.glow-guild-top {
+  animation: candleFlickerA 4.2s infinite alternate ease-in-out;
+}
+
+.glow-guild-mid {
+  animation: candleFlickerB 3.6s infinite alternate ease-in-out;
+}
+
+.glow-guild-low {
+  animation: candleFlickerA 2.9s infinite alternate ease-in-out;
+}
+
+@keyframes candleFlickerA {
+  0% { opacity: 0.45; transform: scale(0.96); }
+  35% { opacity: 0.85; transform: scale(1.03); }
+  70% { opacity: 0.6; transform: scale(0.99); }
+  100% { opacity: 0.95; transform: scale(1.05); }
+}
+
+@keyframes candleFlickerB {
+  0% { opacity: 0.85; transform: scale(1.02); }
+  45% { opacity: 0.5; transform: scale(0.97); }
+  80% { opacity: 0.9; transform: scale(1.04); }
+  100% { opacity: 0.6; transform: scale(0.98); }
+}
+
+/* Alleyway Fog / Mist in The Shades */
+.ambient-alley-mist {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(130, 165, 215, 0.16) 0%,
+    rgba(95, 130, 185, 0.07) 55%,
+    rgba(0, 0, 0, 0) 80%
+  );
+  animation: alleyMistDrift 7s infinite alternate ease-in-out;
+}
+
+@keyframes alleyMistDrift {
+  0% { opacity: 0.45; transform: translateX(-8px) scaleX(0.96); }
+  100% { opacity: 0.85; transform: translateX(10px) scaleX(1.08); }
+}
+
+/* Subtle Drifting Night Lantern / Octarine Motes */
+.ambient-firefly {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #ffeb80;
+  box-shadow: 0 0 8px 2px rgba(255, 215, 80, 0.8);
+  pointer-events: none;
+  animation: fireflyFloat 9s infinite ease-in-out;
+}
+
+.ambient-firefly.mote-1 { left: 18%; bottom: 26%; animation-delay: 0s; }
+.ambient-firefly.mote-2 { left: 46%; bottom: 32%; animation-delay: 2.4s; background: #99ffff; box-shadow: 0 0 8px 2px rgba(0, 255, 255, 0.7); }
+.ambient-firefly.mote-3 { left: 73%; bottom: 28%; animation-delay: 4.7s; }
+.ambient-firefly.mote-4 { left: 86%; bottom: 22%; animation-delay: 1.5s; }
+
+@keyframes fireflyFloat {
+  0%, 100% { opacity: 0; transform: translate(0, 0); }
+  25% { opacity: 0.75; transform: translate(12px, -16px); }
+  60% { opacity: 0.4; transform: translate(-8px, -28px); }
+  85% { opacity: 0.85; transform: translate(6px, -12px); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   INTERACTIVE SCUMM WORLD HOTSPOTS (Tavern, Archway, Guild, Moon)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.world-stage-hotspot {
+  position: absolute;
+  z-index: 6;
+  background: transparent;
+  border: none;
+  outline: none;
+  display: flex;
+   justify-content: center;
+  align-items: flex-start;
+  transition: filter 0.2s ease, background-color 0.2s ease;
+  border-radius: 6px;
+}
+
+.world-stage-hotspot:hover {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 223, 128, 0.14) 0%,
+    rgba(255, 204, 0, 0.04) 55%,
+    rgba(0, 0, 0, 0) 75%
+  );
+}
+
+.hotspot-hover-tag {
+  position: absolute;
+  top: -26px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ffdf80;
+  font-family: 'VT323', monospace;
+  font-size: 19px;
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  pointer-events: none;
+}
+
+.hotspot-moon .hotspot-hover-tag {
+  top: auto;
+  bottom: -26px;
+}
+
+.world-stage-hotspot:hover .hotspot-hover-tag {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+/* Floating World Speech (e.g. Tavern Bouncer / Unseen Librarian) */
+.floating-world-speech {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 2px 0 #000, 0 -2px 0 #000, 2px 0 0 #000, -2px 0 0 #000;
+  pointer-events: none;
+  white-space: normal;
+  width: max-content;
+  max-width: 310px;
+  text-align: center;
+  z-index: 1000;
+  animation: worldSpeechPop 0.2s ease-out;
+}
+
+@keyframes worldSpeechPop {
+  0% { opacity: 0; transform: translate(-50%, -85%) scale(0.94); }
+  100% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
 }
 
 /* Walkable stage path overlay */
@@ -102,9 +371,9 @@
 /* Ground Light Pools */
 .light-pool-amber {
   position: absolute;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(255, 190, 80, 0.32) 0%, rgba(255, 140, 30, 0.12) 50%, rgba(0, 0, 0, 0) 75%);
+  background: radial-gradient(ellipse at center, rgba(255, 190, 80, 0.26) 0%, rgba(255, 140, 30, 0.1) 50%, rgba(0, 0, 0, 0) 75%);
   mix-blend-mode: screen;
   pointer-events: none;
   z-index: 2;
@@ -112,9 +381,9 @@
 }
 
 @keyframes lightPoolFlicker {
-  0% { opacity: 0.8; transform: translateX(-50%) scale(0.98); }
-  50% { opacity: 1; transform: translateX(-50%) scale(1.02); }
-  100% { opacity: 0.85; transform: translateX(-50%) scale(1); }
+  0% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+  100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
 }
 
 /* World Fixture Stations */
@@ -421,5 +690,8 @@
   .satchel-pixel-img {
     width: 56px;
     height: 56px;
+  }
+  .audio-mute-label {
+    display: none;
   }
 }

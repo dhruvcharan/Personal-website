@@ -190,6 +190,35 @@ class SoundManager {
       });
     } catch (e) {}
   }
+
+  // Play wooden door knock (3 rapid low thuds)
+  public playKnock() {
+    if (this.isMuted) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      [0, 0.14, 0.28].forEach((offset) => {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(110, this.ctx.currentTime + offset);
+        osc.frequency.exponentialRampToValueAtTime(38, this.ctx.currentTime + offset + 0.07);
+
+        gain.gain.setValueAtTime(0.18, this.ctx.currentTime + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + offset + 0.07);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(this.ctx.currentTime + offset);
+        osc.stop(this.ctx.currentTime + offset + 0.07);
+      });
+    } catch (e) {}
+  }
 }
 
 export const soundFx = new SoundManager();
+

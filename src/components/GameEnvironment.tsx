@@ -1,18 +1,29 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import PixelArtCharacter, { WalkTarget } from "./PixelArtCharacter";
 import InteractiveSprite from "./InteractiveSprite";
 import ScholarNpc from "./ScholarNpc";
 import DialogueMenu from "./DialogueMenu";
 import InteractionWheel, { InteractiveTarget, VerbType } from "./InteractionWheel";
-import { DialogueOption } from "../data/dialogueData";
+import {
+  DialogueOption,
+  InventoryItemId,
+  INVENTORY_DIALOGUE_CONFIG,
+  SATCHEL_INTERACTION_CONFIG,
+  SCHOLAR_INTERACTION_CONFIG,
+  STAGE_UI_TEXT,
+  WORLD_HOTSPOTS_CONFIG,
+  WorldHotspotConfig,
+} from "../data/dialogueData";
+
 import { soundFx } from "../utils/audio";
 import {
   calculateStageMetrics,
   StageMetrics,
-  REFERENCE_SCALE,
   SCHOLAR_X_PERCENT,
   getClosestWalkTarget,
   getDistanceToScholar,
+  nativeToViewportRect,
+  ViewportRect,
 } from "../utils/stageGeometry";
 import "../styles/GameEnvironment.css";
 
@@ -46,7 +57,7 @@ interface GameEnvironmentProps {
 }
 
 interface InteractiveObject {
-  type: 'github' | 'linkedin' | 'blog' | 'now' | 'mail' | 'unknown';
+  type: InventoryItemId | 'unknown';
   position: { x: number; y: number };
   isInteracting: boolean;
   spritePaths: string[];
@@ -64,21 +75,43 @@ interface TargetMarker {
 }
 
 interface InventoryItem {
-  id: string;
-  type: InteractiveObject['type'];
+  id: InventoryItemId;
+  type: InventoryItemId;
   label: string;
   verbText: string;
   path: string;
   icon: string;
 }
 
-const DEFAULT_INVENTORY_ITEMS: InventoryItem[] = [
-  { id: 'blog', type: 'blog', label: 'Message Board', verbText: 'Examine Message Board (Go to Blog)', path: '/about', icon: blogIcon },
-  { id: 'github', type: 'github', label: 'Code Scroll', verbText: 'Inspect Code Scroll (Go to GitHub)', path: '/projects', icon: githubIcon },
-  { id: 'linkedin', type: 'linkedin', label: 'Phonebook', verbText: 'Open Phonebook (Go to LinkedIn)', path: '/linkedin', icon: linkedinIcon },
-  { id: 'mail', type: 'mail', label: 'Mailbox', verbText: 'Open Mailbox (Contact / Email)', path: '/mail', icon: mailIcon },
-  { id: 'now', type: 'now', label: 'Hourglass', verbText: 'Look at Hourglass (Go to Now Page)', path: '/now', icon: nowIcon },
-];
+interface WorldSpeechBubble {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  color: string;
+}
+
+const INVENTORY_ICONS: Record<InventoryItemId, string> = {
+  blog: blogIcon,
+  github: githubIcon,
+  linkedin: linkedinIcon,
+  mail: mailIcon,
+  now: nowIcon,
+};
+
+const DEFAULT_INVENTORY_ITEMS: InventoryItem[] = (
+  Object.keys(INVENTORY_DIALOGUE_CONFIG) as InventoryItemId[]
+).map((id) => {
+  const cfg = INVENTORY_DIALOGUE_CONFIG[id];
+  return {
+    id: cfg.id,
+    type: cfg.id,
+    label: cfg.label,
+    verbText: cfg.defaultVerbText,
+    path: cfg.path,
+    icon: INVENTORY_ICONS[id],
+  };
+});
 
 const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const [stageMetrics, setStageMetrics] = useState<StageMetrics>(() => calculateStageMetrics());
@@ -91,6 +124,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const [activePath, setActivePath] = useState<string | null>(null);
   const [characterSpeech, setCharacterSpeech] = useState<string | null>(null);
   const [scholarSpeech, setScholarSpeech] = useState<string | null>(null);
+  const [worldSpeech, setWorldSpeech] = useState<WorldSpeechBubble | null>(null);
   const [showDialogueMenu, setShowDialogueMenu] = useState(false);
   const [isSpeakingDialogue, setIsSpeakingDialogue] = useState(false);
   const [inventoryList] = useState<InventoryItem[]>(DEFAULT_INVENTORY_ITEMS);
@@ -99,6 +133,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     target: InteractiveTarget;
   } | null>(null);
   const [wheelHoveredVerbText, setWheelHoveredVerbText] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState<boolean>(() => soundFx.getMuted());
 
   const [characterPosition, setCharacterPosition] = useState<Position>(() => ({
     x: (typeof window !== 'undefined' ? window.innerWidth : 1440) * 0.2,
@@ -108,10 +143,45 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const [walkTarget, setWalkTarget] = useState<WalkTarget | null>(null);
   const [targetMarker, setTargetMarker] = useState<TargetMarker | null>(null);
 
-  const scholarObstacles = React.useMemo(
+  const scholarObstacles = useMemo(
     () => [stageMetrics.scholarObstacleHitbox],
     [stageMetrics.scholarObstacleHitbox]
   );
+
+  // Project native background hotspots and ambient fixtures to current viewport
+  const projectedHotspots = useMemo(() => {
+    return WORLD_HOTSPOTS_CONFIG.map((def) => ({
+      ...def,
+      rect: nativeToViewportRect(
+        def.nativeRect.nx,
+        def.nativeRect.ny,
+        def.nativeRect.nw,
+        def.nativeRect.nh,
+        stageMetrics
+      ),
+    }));
+  }, [stageMetrics]);
+
+  const ambientLocations = useMemo(() => {
+    return {
+      chimney: nativeToViewportRect(408, 0, 38, 40, stageMetrics),
+      tavernLeftWindow: nativeToViewportRect(24, 444, 58, 72, stageMetrics),
+      tavernRightWindow: nativeToViewportRect(298, 444, 58, 72, stageMetrics),
+      tavernDoorGlow: nativeToViewportRect(160, 565, 95, 42, stageMetrics),
+      guildTopWindow: nativeToViewportRect(1134, 92, 46, 70, stageMetrics),
+      guildMidWindows: nativeToViewportRect(1055, 240, 225, 98, stageMetrics),
+      guildLowWindows: nativeToViewportRect(1062, 444, 155, 94, stageMetrics),
+      guildGroundGlow: nativeToViewportRect(1050, 565, 210, 48, stageMetrics),
+      alleyMist: nativeToViewportRect(565, 435, 195, 145, stageMetrics),
+      stars: [
+        { ...nativeToViewportRect(496, 18, 8, 8, stageMetrics), delay: '0s' },
+        { ...nativeToViewportRect(753, 18, 9, 9, stageMetrics), delay: '1.1s' },
+        { ...nativeToViewportRect(810, 62, 8, 8, stageMetrics), delay: '2.3s' },
+        { ...nativeToViewportRect(1024, 18, 9, 9, stageMetrics), delay: '0.6s' },
+        { ...nativeToViewportRect(574, 90, 6, 6, stageMetrics), delay: '1.7s' },
+      ],
+    };
+  }, [stageMetrics]);
 
   const characterPositionRef = useRef<Position>(characterPosition);
   const prevViewportWidthRef = useRef<number>(typeof window !== 'undefined' ? window.innerWidth : 1440);
@@ -119,12 +189,16 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const pendingFloorPickupRef = useRef<boolean>(false);
   const pendingScholarTalkRef = useRef<boolean>(false);
   const pendingScholarShoveRef = useRef<boolean>(false);
+  const pendingWorldActionRef = useRef<(() => void) | null>(null);
+  const scholarPokeCountRef = useRef<number>(0);
   const dialogueTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const characterSpeechTimerRef = useRef<NodeJS.Timeout | null>(null);
   const scholarSpeechTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const worldSpeechTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const worldReplyDelayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const speakAsCharacter = (text: string | null, autoClearDuration: number = 2500) => {
+  const clearAllSpeechTimers = () => {
     if (characterSpeechTimerRef.current) {
       clearTimeout(characterSpeechTimerRef.current);
       characterSpeechTimerRef.current = null;
@@ -133,7 +207,20 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       clearTimeout(scholarSpeechTimerRef.current);
       scholarSpeechTimerRef.current = null;
     }
+    if (worldSpeechTimerRef.current) {
+      clearTimeout(worldSpeechTimerRef.current);
+      worldSpeechTimerRef.current = null;
+    }
+    if (worldReplyDelayTimerRef.current) {
+      clearTimeout(worldReplyDelayTimerRef.current);
+      worldReplyDelayTimerRef.current = null;
+    }
+  };
+
+  const speakAsCharacter = (text: string | null, autoClearDuration: number = 3200) => {
+    clearAllSpeechTimers();
     setScholarSpeech(null);
+    setWorldSpeech(null);
     setCharacterSpeech(text);
     if (text) {
       soundFx.playTalk();
@@ -145,16 +232,10 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     }
   };
 
-  const speakAsScholar = (text: string | null, autoClearDuration: number = 2500) => {
-    if (scholarSpeechTimerRef.current) {
-      clearTimeout(scholarSpeechTimerRef.current);
-      scholarSpeechTimerRef.current = null;
-    }
-    if (characterSpeechTimerRef.current) {
-      clearTimeout(characterSpeechTimerRef.current);
-      characterSpeechTimerRef.current = null;
-    }
+  const speakAsScholar = (text: string | null, autoClearDuration: number = 3200) => {
+    clearAllSpeechTimers();
     setCharacterSpeech(null);
+    setWorldSpeech(null);
     setScholarSpeech(text);
     if (text) {
       soundFx.playTalk();
@@ -163,6 +244,26 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
           setScholarSpeech(null);
         }, autoClearDuration);
       }
+    }
+  };
+
+  const speakFromWorld = (
+    id: string,
+    text: string,
+    x: number,
+    y: number,
+    color: string = '#ff9966',
+    autoClearDuration: number = 3400
+  ) => {
+    clearAllSpeechTimers();
+    setCharacterSpeech(null);
+    setScholarSpeech(null);
+    setWorldSpeech({ id, text, x, y, color });
+    soundFx.playTalk();
+    if (autoClearDuration > 0) {
+      worldSpeechTimerRef.current = setTimeout(() => {
+        setWorldSpeech(null);
+      }, autoClearDuration);
     }
   };
 
@@ -210,8 +311,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     return () => {
       if (dialogueTimerRef.current) clearTimeout(dialogueTimerRef.current);
       if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
-      if (characterSpeechTimerRef.current) clearTimeout(characterSpeechTimerRef.current);
-      if (scholarSpeechTimerRef.current) clearTimeout(scholarSpeechTimerRef.current);
+      clearAllSpeechTimers();
     };
   }, []);
 
@@ -230,9 +330,11 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     const target = e.target as HTMLElement;
     if (
       target.closest('.satchel-transparent-btn') ||
+      target.closest('.audio-mute-btn') ||
       target.closest('.scumm-pouch-modal') ||
       target.closest('.ground-collectible-item') ||
       target.closest('.scholar-npc-container') ||
+      target.closest('.world-stage-hotspot') ||
       target.closest('.scumm-dialogue-box') ||
       target.closest('.curse-verb-wheel')
     ) {
@@ -249,6 +351,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     pendingFloorPickupRef.current = false;
     pendingScholarTalkRef.current = false;
     pendingScholarShoveRef.current = false;
+    pendingWorldActionRef.current = null;
     if (dialogueTimerRef.current) {
       clearTimeout(dialogueTimerRef.current);
       dialogueTimerRef.current = null;
@@ -262,6 +365,31 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     }, 850);
   };
 
+  // Walk character to a specific viewport X coordinate and run callback on arrival
+  const walkToAndExecute = (desiredCenterX: number, callback: () => void) => {
+    const currentX = characterPositionRef.current.x;
+    const walkTargetPos = getClosestWalkTarget(desiredCenterX, currentX, stageMetrics);
+    const dist = Math.abs(walkTargetPos.targetLeft - currentX);
+
+    pendingFloorPickupRef.current = false;
+    pendingScholarTalkRef.current = false;
+    pendingScholarShoveRef.current = false;
+    setIsSpeakingDialogue(false);
+    setShowDialogueMenu(false);
+    setActiveWheel(null);
+
+    if (dist <= 18) {
+      pendingWorldActionRef.current = null;
+      callback();
+    } else {
+      soundFx.playFootstep();
+      pendingWorldActionRef.current = callback;
+      const targetObj: WalkTarget = { x: walkTargetPos.targetLeft, id: Date.now() };
+      setWalkTarget(targetObj);
+      setTargetMarker({ x: walkTargetPos.targetCenterX, y: walkTargetPos.markerY, id: targetObj.id });
+    }
+  };
+
   // Click Scholar NPC -> Walk over and only open dialogue upon reaching proximity!
   const handleScholarClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -270,6 +398,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     const distance = getDistanceToScholar(currentX, stageMetrics);
 
     pendingScholarShoveRef.current = false;
+    pendingWorldActionRef.current = null;
 
     if (distance <= stageMetrics.scholarProximityThreshold) {
       setIsSpeakingDialogue(false);
@@ -310,8 +439,17 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     if (pendingScholarShoveRef.current) {
       pendingScholarShoveRef.current = false;
       if (distance <= stageMetrics.scholarProximityThreshold + 40) {
-        speakAsScholar("Knock it off!");
+        const responses = SCHOLAR_INTERACTION_CONFIG.pokeResponses;
+        const msg = responses[scholarPokeCountRef.current % responses.length];
+        scholarPokeCountRef.current += 1;
+        speakAsScholar(msg, 3200);
       }
+    }
+
+    if (pendingWorldActionRef.current) {
+      const action = pendingWorldActionRef.current;
+      pendingWorldActionRef.current = null;
+      action();
     }
   };
 
@@ -376,98 +514,99 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     }
   };
 
-  const getInventoryItemTarget = (item: InventoryItem): InteractiveTarget => {
-    switch (item.id) {
-      case 'blog':
-        return {
-          id: 'blog',
-          name: 'Message Board',
-          handVerb: 'Examine Notices (Go to Blog)',
-          eyeVerb: 'Read Town Decrees',
-          mouthVerb: 'Lick Parchment',
-          onExecuteVerb: (verb: VerbType) => {
-            setShowInventory(false);
-            if (verb === 'hand' || verb === 'eye') {
-              executeNavigationInteraction('blog', '/about');
-            } else if (verb === 'mouth') {
-              speakAsCharacter("Tastes like aged oak bark and bureaucratic decrees.");
-            }
-          }
-        };
-      case 'github':
-        return {
-          id: 'github',
-          name: 'Code Scroll',
-          handVerb: 'Inspect Code Scroll (Go to GitHub)',
-          eyeVerb: 'Study Ancient Algorithms',
-          mouthVerb: 'Recite Incantation',
-          onExecuteVerb: (verb: VerbType) => {
-            setShowInventory(false);
-            if (verb === 'hand' || verb === 'eye') {
-              executeNavigationInteraction('github', '/projects');
-            } else if (verb === 'mouth') {
-              speakAsCharacter("git commit -m 'Lumos' - the incantation resonates!");
-            }
-          }
-        };
-      case 'linkedin':
-        return {
-          id: 'linkedin',
-          name: 'Guild Phonebook',
-          handVerb: 'Open Phonebook (Go to LinkedIn)',
-          eyeVerb: 'Browse Guild Directory',
-          mouthVerb: 'Call Contact',
-          onExecuteVerb: (verb: VerbType) => {
-            setShowInventory(false);
-            if (verb === 'hand' || verb === 'eye') {
-              executeNavigationInteraction('linkedin', '/linkedin');
-            } else if (verb === 'mouth') {
-              speakAsCharacter("Connecting to the guild network...");
-            }
-          }
-        };
-      case 'mail':
-        return {
-          id: 'mail',
-          name: 'Enchanted Mailbox',
-          handVerb: 'Open Mailbox (Send Email)',
-          eyeVerb: 'Inspect Brass Latch',
-          mouthVerb: 'Whisper Message',
-          onExecuteVerb: (verb: VerbType) => {
-            setShowInventory(false);
-            if (verb === 'hand' || verb === 'eye') {
-              executeNavigationInteraction('mail', '/mail');
-            } else if (verb === 'mouth') {
-              speakAsCharacter("Your whispered words turn into an envelope of stardust.");
-            }
-          }
-        };
-      case 'now':
-      default:
-        return {
-          id: 'now',
-          name: 'Hourglass',
-          handVerb: 'Inspect Timeline (Go to Now)',
-          eyeVerb: 'Watch the Sands of Time',
-          mouthVerb: 'Taste Sand of Time',
-          onExecuteVerb: (verb: VerbType) => {
-            setShowInventory(false);
-            if (verb === 'hand' || verb === 'eye') {
-              executeNavigationInteraction('now', '/now');
-            } else if (verb === 'mouth') {
-              speakAsCharacter("Hmm, notes of silicon, glass, and the fleeting present moment.");
-            }
-          }
-        };
+  // World Hotspot Interactions driven completely by `WORLD_HOTSPOTS_CONFIG` in dialogueData.ts
+  const executeHotspotVerb = (hotspot: WorldHotspotConfig & { rect: ViewportRect }, verb: VerbType) => {
+    const outcome = hotspot.responses[verb];
+    if (!outcome) return;
+
+    const runAction = () => {
+      if (outcome.sound === 'knock') {
+        soundFx.playKnock();
+      } else if (outcome.sound === 'magic') {
+        soundFx.playMagic();
+      } else if (outcome.sound === 'satchel') {
+        soundFx.playSatchel();
+      }
+
+      if (outcome.navigate) {
+        executeNavigationInteraction(outcome.navigate.type, outcome.navigate.path);
+        return;
+      }
+
+      if (outcome.characterSpeech) {
+        const speechDuration = outcome.worldReply?.delayMs
+          ? Math.max(1200, outcome.worldReply.delayMs - 100)
+          : 3500;
+        speakAsCharacter(outcome.characterSpeech, speechDuration);
+      }
+
+      if (outcome.worldReply) {
+        const reply = outcome.worldReply;
+        worldReplyDelayTimerRef.current = setTimeout(() => {
+          speakFromWorld(
+            reply.speakerId,
+            reply.text,
+            hotspot.rect.centerX,
+            hotspot.rect.top - 16,
+            reply.color || '#ff8c66',
+            reply.durationMs || 3600
+          );
+        }, reply.delayMs ?? 400);
+      }
+    };
+
+    if (hotspot.walkToNativeX && (verb === 'hand' || (verb === 'mouth' && outcome.worldReply))) {
+      const targetViewportRect = nativeToViewportRect(hotspot.walkToNativeX, 0, 10, 10, stageMetrics);
+      walkToAndExecute(targetViewportRect.centerX, runAction);
+    } else {
+      runAction();
     }
   };
 
+  const getWorldHotspotTarget = (hotspot: WorldHotspotConfig & { rect: ViewportRect }): InteractiveTarget => ({
+    id: hotspot.id,
+    name: hotspot.label,
+    handVerb: hotspot.verbs.hand,
+    eyeVerb: hotspot.verbs.eye,
+    mouthVerb: hotspot.verbs.mouth,
+    onExecuteVerb: (verb: VerbType) => executeHotspotVerb(hotspot, verb),
+  });
+
+  const handleWorldHotspotLeftClick = (
+    e: React.MouseEvent,
+    hotspot: WorldHotspotConfig & { rect: ViewportRect }
+  ) => {
+    e.stopPropagation();
+    executeHotspotVerb(hotspot, hotspot.defaultLeftClickVerb);
+  };
+
+  // Inventory Item Interactions driven by `INVENTORY_DIALOGUE_CONFIG` in dialogueData.ts
+  const getInventoryItemTarget = (item: InventoryItem): InteractiveTarget => {
+    const cfg = INVENTORY_DIALOGUE_CONFIG[item.id];
+    return {
+      id: cfg.id,
+      name: cfg.wheelName,
+      handVerb: cfg.verbs.hand,
+      eyeVerb: cfg.verbs.eye,
+      mouthVerb: cfg.verbs.mouth,
+      onExecuteVerb: (verb: VerbType) => {
+        setShowInventory(false);
+        if (verb === 'hand' || verb === 'eye') {
+          executeNavigationInteraction(cfg.id, cfg.path);
+        } else if (verb === 'mouth') {
+          speakAsCharacter(cfg.mouthSpeech);
+        }
+      },
+    };
+  };
+
+  // Scholar NPC Interactions driven by `SCHOLAR_INTERACTION_CONFIG` in dialogueData.ts
   const getScholarTarget = (): InteractiveTarget => ({
     id: 'scholar',
-    name: 'Archivist',
-    handVerb: 'Poke Archivist',
-    eyeVerb: 'Examine Archivist',
-    mouthVerb: 'Talk to Archivist',
+    name: SCHOLAR_INTERACTION_CONFIG.name,
+    handVerb: SCHOLAR_INTERACTION_CONFIG.verbs.hand,
+    eyeVerb: SCHOLAR_INTERACTION_CONFIG.verbs.eye,
+    mouthVerb: SCHOLAR_INTERACTION_CONFIG.verbs.mouth,
     onExecuteVerb: (verb: VerbType) => {
       const currentX = characterPositionRef.current.x;
       const scholarRawX = stageMetrics.scholarX;
@@ -475,9 +614,13 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
 
       if (verb === 'hand') {
         pendingScholarTalkRef.current = false;
+        pendingWorldActionRef.current = null;
         if (distance <= stageMetrics.scholarProximityThreshold) {
           pendingScholarShoveRef.current = false;
-          speakAsScholar("Knock it off!");
+          const responses = SCHOLAR_INTERACTION_CONFIG.pokeResponses;
+          const msg = responses[scholarPokeCountRef.current % responses.length];
+          scholarPokeCountRef.current += 1;
+          speakAsScholar(msg, 3200);
         } else {
           const obs = stageMetrics.scholarObstacleHitbox;
           const targetLeft = currentX < scholarRawX
@@ -488,9 +631,10 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
           setTargetMarker({ x: Math.round(targetLeft + stageMetrics.characterWidth / 2), y: stageMetrics.groundY - 10, id: Date.now() });
         }
       } else if (verb === 'eye') {
-        speakAsCharacter("He looks like he knows a thing or two about a thing or two.");
+        speakAsCharacter(SCHOLAR_INTERACTION_CONFIG.examineSpeech);
       } else if (verb === 'mouth') {
         pendingScholarShoveRef.current = false;
+        pendingWorldActionRef.current = null;
         if (distance <= stageMetrics.scholarProximityThreshold) {
           setIsSpeakingDialogue(false);
           setShowDialogueMenu(true);
@@ -510,23 +654,25 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     }
   });
 
+  // Satchel Interactions driven by `SATCHEL_INTERACTION_CONFIG` in dialogueData.ts
   const getSatchelTarget = (): InteractiveTarget => ({
     id: 'satchel',
-    name: 'Inventory Satchel',
-    handVerb: 'Open Satchel',
-    eyeVerb: 'Examine Satchel',
-    mouthVerb: 'Whisper into Satchel',
+    name: SATCHEL_INTERACTION_CONFIG.name,
+    handVerb: SATCHEL_INTERACTION_CONFIG.verbs.hand,
+    eyeVerb: SATCHEL_INTERACTION_CONFIG.verbs.eye,
+    mouthVerb: SATCHEL_INTERACTION_CONFIG.verbs.mouth,
     onExecuteVerb: (verb: VerbType) => {
       if (verb === 'hand') {
         soundFx.playSatchel();
         setShowInventory(true);
       } else if (verb === 'eye') {
-        speakAsCharacter("A satchel for carrying relics, scrolls, and oddities.");
+        speakAsCharacter(SATCHEL_INTERACTION_CONFIG.examineSpeech);
       } else if (verb === 'mouth') {
-        speakAsCharacter("It doesn't answer back, not that I expected it to.");
+        speakAsCharacter(SATCHEL_INTERACTION_CONFIG.mouthSpeech);
       }
     }
   });
+
 
   const handleSatchelClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -542,6 +688,15 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       setIsOpeningSatchel(false);
       setShowInventory(true);
     }, 250);
+  };
+
+  const handleToggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const muted = soundFx.toggleMute();
+    setIsMuted(muted);
+    if (!muted) {
+      soundFx.playClick();
+    }
   };
 
   const handleUseInventoryItem = (item: InventoryItem) => {
@@ -592,7 +747,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     ? wheelHoveredVerbText
     : hoveredItem
       ? hoveredItem.verbText
-      : "Click floor to walk • Right-click items & NPCs to interact";
+      : STAGE_UI_TEXT.defaultStatusPrompt;
 
   return (
     <div
@@ -609,17 +764,41 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     >
       {/*   header banner   */}
       <div className="game-header-banner">
-        <h1 className="game-title">Dhruv Charan</h1>
+        <h1 className="game-title">{STAGE_UI_TEXT.title}</h1>
       </div>
 
       <div className="scumm-top-plaque top-plaque">
         <span className="plaque-text">{statusLineText}</span>
       </div>
 
+      {/* Discrete Retro Audio Toggle */}
+      <button
+        className="audio-mute-btn"
+        onClick={handleToggleMute}
+        onMouseEnter={() =>
+          setHoveredItem({
+            label: isMuted ? STAGE_UI_TEXT.audioMutedVerb : STAGE_UI_TEXT.audioActiveVerb,
+            verbText: isMuted ? STAGE_UI_TEXT.audioMutedVerb : STAGE_UI_TEXT.audioActiveVerb,
+          })
+        }
+        onMouseLeave={() => setHoveredItem(null)}
+        aria-label={isMuted ? STAGE_UI_TEXT.audioMutedVerb : STAGE_UI_TEXT.audioActiveVerb}
+      >
+        <span className="audio-mute-icon">{isMuted ? '🔇' : '🔔'}</span>
+        <span className="audio-mute-label">{isMuted ? 'MUTED' : 'SFX'}</span>
+      </button>
+
       {/* Borderless Transparent Satchel Button */}
       <button
         className="satchel-transparent-btn"
         onClick={handleSatchelClick}
+        onMouseEnter={() =>
+          setHoveredItem({
+            label: SATCHEL_INTERACTION_CONFIG.name,
+            verbText: SATCHEL_INTERACTION_CONFIG.hoverVerbText,
+          })
+        }
+        onMouseLeave={() => setHoveredItem(null)}
         onContextMenu={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -627,10 +806,10 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
         }}
         onTouchStart={(e) => handleTouchStart(getSatchelTarget, e)}
         onTouchEnd={handleTouchEnd}
-        aria-label="Open Satchel Inventory"
+        aria-label={SATCHEL_INTERACTION_CONFIG.name}
       >
-        <span className="satchel-hover-tooltip">INVENTORY (Right-Click to Interact)</span>
-        <img src={pixelSatchel} alt="Inventory Satchel" className="satchel-pixel-img" />
+        <span className="satchel-hover-tooltip">{STAGE_UI_TEXT.satchelTooltip}</span>
+        <img src={pixelSatchel} alt={SATCHEL_INTERACTION_CONFIG.name} className="satchel-pixel-img" />
       </button>
 
       {/* Retro Inventory Window */}
@@ -639,7 +818,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
           <div className="scumm-pouch-modal" onClick={(e) => e.stopPropagation()}>
             <div className="pouch-header">
               <span className="pouch-verb">
-                {hoveredItem ? hoveredItem.verbText : "Inventory (Right-Click to Interact)"}
+                {hoveredItem ? hoveredItem.verbText : STAGE_UI_TEXT.inventoryModalDefaultPrompt}
               </span>
               <button
                 className="pouch-close-btn"
@@ -679,13 +858,184 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
 
       {/* Background Stage */}
       <div className="parallax-layer layer-stage">
+        {/* ══════════════════════════════════════════════════════════════════
+            AMBIENT LIVING STAGE EFFECTS (Candle Flicker, Chimney Smoke, Mist)
+           ══════════════════════════════════════════════════════════════════ */}
+        <div className="ambient-stage-effects" aria-hidden="true">
+          {/* Starlight Twinkles */}
+          {ambientLocations.stars.map((star, idx) => (
+            <div
+              key={`star-${idx}`}
+              className="ambient-star-twinkle"
+              style={{
+                left: `${star.centerX}px`,
+                top: `${star.centerY}px`,
+                animationDelay: star.delay,
+              }}
+            />
+          ))}
+
+          {/* Tavern Chimney Pixel Smoke Plume */}
+          <div
+            className="ambient-chimney-emitter"
+            style={{
+              left: `${ambientLocations.chimney.centerX}px`,
+              top: `${Math.max(8, ambientLocations.chimney.top)}px`,
+            }}
+          >
+            <span className="chimney-smoke-puff puff-1" />
+            <span className="chimney-smoke-puff puff-2" />
+            <span className="chimney-smoke-puff puff-3" />
+            <span className="chimney-smoke-puff puff-4" />
+          </div>
+
+          {/* Warm Candlelight Flicker Overlays on Tavern & Guild Windows */}
+          <div
+            className="ambient-window-glow glow-tavern"
+            style={{
+              left: `${ambientLocations.tavernLeftWindow.left}px`,
+              top: `${ambientLocations.tavernLeftWindow.top}px`,
+              width: `${ambientLocations.tavernLeftWindow.width}px`,
+              height: `${ambientLocations.tavernLeftWindow.height}px`,
+            }}
+          />
+          <div
+            className="ambient-window-glow glow-tavern-alt"
+            style={{
+              left: `${ambientLocations.tavernRightWindow.left}px`,
+              top: `${ambientLocations.tavernRightWindow.top}px`,
+              width: `${ambientLocations.tavernRightWindow.width}px`,
+              height: `${ambientLocations.tavernRightWindow.height}px`,
+            }}
+          />
+          <div
+            className="ambient-window-glow glow-guild-top"
+            style={{
+              left: `${ambientLocations.guildTopWindow.left}px`,
+              top: `${ambientLocations.guildTopWindow.top}px`,
+              width: `${ambientLocations.guildTopWindow.width}px`,
+              height: `${ambientLocations.guildTopWindow.height}px`,
+            }}
+          />
+          <div
+            className="ambient-window-glow glow-guild-mid"
+            style={{
+              left: `${ambientLocations.guildMidWindows.left}px`,
+              top: `${ambientLocations.guildMidWindows.top}px`,
+              width: `${ambientLocations.guildMidWindows.width}px`,
+              height: `${ambientLocations.guildMidWindows.height}px`,
+            }}
+          />
+          <div
+            className="ambient-window-glow glow-guild-low"
+            style={{
+              left: `${ambientLocations.guildLowWindows.left}px`,
+              top: `${ambientLocations.guildLowWindows.top}px`,
+              width: `${ambientLocations.guildLowWindows.width}px`,
+              height: `${ambientLocations.guildLowWindows.height}px`,
+            }}
+          />
+
+          {/* Ground Light Pools Spilling onto Cobblestones */}
+          <div
+            className="light-pool-amber"
+            style={{
+              left: `${ambientLocations.tavernDoorGlow.centerX}px`,
+              top: `${ambientLocations.tavernDoorGlow.centerY}px`,
+              width: `${ambientLocations.tavernDoorGlow.width * 1.8}px`,
+              height: `${ambientLocations.tavernDoorGlow.height}px`,
+            }}
+          />
+          <div
+            className="light-pool-amber"
+            style={{
+              left: `${ambientLocations.guildGroundGlow.centerX}px`,
+              top: `${ambientLocations.guildGroundGlow.centerY}px`,
+              width: `${ambientLocations.guildGroundGlow.width * 1.4}px`,
+              height: `${ambientLocations.guildGroundGlow.height}px`,
+              animationDelay: '1.3s',
+            }}
+          />
+
+          {/* Drifting Ankh-Morpork Alleyway Mist */}
+          <div
+            className="ambient-alley-mist"
+            style={{
+              left: `${ambientLocations.alleyMist.left}px`,
+              top: `${ambientLocations.alleyMist.top}px`,
+              width: `${ambientLocations.alleyMist.width}px`,
+              height: `${ambientLocations.alleyMist.height}px`,
+            }}
+          />
+
+          {/* Drifting Octarine / Night Lantern Motes */}
+          <span className="ambient-firefly mote-1" />
+          <span className="ambient-firefly mote-2" />
+          <span className="ambient-firefly mote-3" />
+          <span className="ambient-firefly mote-4" />
+        </div>
+
+        {/* ══════════════════════════════════════════════════════════════════
+            INTERACTIVE SCUMM WORLD HOTSPOTS (Tavern, Archway, Guild, Moon)
+           ══════════════════════════════════════════════════════════════════ */}
+        {projectedHotspots.map((hotspot) => (
+          <div
+            key={hotspot.id}
+            className={`world-stage-hotspot hotspot-${hotspot.id}`}
+            style={{
+              left: `${hotspot.rect.left}px`,
+              top: `${hotspot.rect.top}px`,
+              width: `${hotspot.rect.width}px`,
+              height: `${hotspot.rect.height}px`,
+            }}
+            onMouseEnter={() =>
+              setHoveredItem({
+                label: hotspot.label,
+                verbText: `${hotspot.defaultHoverVerb} (Right-Click for Verbs)`,
+              })
+            }
+            onMouseLeave={() => setHoveredItem(null)}
+            onClick={(e) => handleWorldHotspotLeftClick(e, hotspot)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openWheelForTarget(e.clientX, e.clientY, getWorldHotspotTarget(hotspot));
+            }}
+            onTouchStart={(e) => handleTouchStart(() => getWorldHotspotTarget(hotspot), e)}
+            onTouchEnd={handleTouchEnd}
+            role="button"
+            aria-label={hotspot.label}
+          >
+            <span className="hotspot-hover-tag">{hotspot.label}</span>
+          </div>
+        ))}
+
+        {/* Floating World Reply Text (e.g. Bouncer shouting from behind Tavern Door) */}
+        {worldSpeech && (
+          <div
+            className="floating-world-speech"
+            style={{
+              left: `${worldSpeech.x}px`,
+              top: `${worldSpeech.y}px`,
+              color: worldSpeech.color,
+            }}
+          >
+            {worldSpeech.text}
+          </div>
+        )}
+
         <div className="cobblestone-path" />
 
         {/* Interactive Scholar NPC */}
         <ScholarNpc
           xPercent={SCHOLAR_X_PERCENT}
-          name="Archivist"
-          onMouseEnter={() => setHoveredItem({ label: "Archivist", verbText: "Talk to Archivist (City Guide)" })}
+          name={SCHOLAR_INTERACTION_CONFIG.name}
+          onMouseEnter={() =>
+            setHoveredItem({
+              label: SCHOLAR_INTERACTION_CONFIG.name,
+              verbText: SCHOLAR_INTERACTION_CONFIG.hoverVerbText,
+            })
+          }
           onMouseLeave={() => setHoveredItem(null)}
           onClick={handleScholarClick}
           onContextMenu={(e) => {
@@ -697,6 +1047,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
           onTouchEnd={handleTouchEnd}
           speechText={scholarSpeech}
         />
+
 
         {/* Target Crosshair Marker */}
         {targetMarker && (
@@ -776,3 +1127,4 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
 };
 
 export default GameEnvironment;
+

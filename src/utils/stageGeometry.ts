@@ -172,3 +172,46 @@ export function getDistanceToScholar(characterLeft: number, stageMetrics: StageM
   }
   return 0;
 }
+
+export interface ViewportRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  centerX: number;
+  centerY: number;
+}
+
+/**
+ * Projects a rectangle defined in native 1376x768 background image coordinates
+ * onto the current viewport, accounting for `background-size: cover` and `background-position: center bottom`.
+ */
+export function nativeToViewportRect(
+  nx: number,
+  ny: number,
+  nw: number,
+  nh: number,
+  metrics: StageMetrics
+): ViewportRect {
+  const { viewportWidth, viewportHeight, stageScale } = metrics;
+  const renderedWidth = NATIVE_STAGE_WIDTH * stageScale;
+  const renderedHeight = NATIVE_STAGE_HEIGHT * stageScale;
+
+  const offsetX = (viewportWidth - renderedWidth) / 2;
+  const offsetY = viewportHeight - renderedHeight;
+
+  const left = Math.round(offsetX + nx * stageScale);
+  const top = Math.round(offsetY + ny * stageScale);
+  const width = Math.round(nw * stageScale);
+  const height = Math.round(nh * stageScale);
+
+  return {
+    left,
+    top,
+    width,
+    height,
+    centerX: Math.round(left + width / 2),
+    centerY: Math.round(top + height / 2),
+  };
+}
+
