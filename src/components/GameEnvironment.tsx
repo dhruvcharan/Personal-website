@@ -276,29 +276,37 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
     unknown: []
   };
 
+  // Preload all interaction sprite sequences so first interaction never flashes blank
+  useEffect(() => {
+    Object.values(spriteCollections)
+      .flat()
+      .forEach((src) => {
+        const img = new Image();
+        img.src = src;
+      });
+  }, []);
+
   useEffect(() => {
     const handleResize = () => {
       const newMetrics = calculateStageMetrics(window.innerWidth, window.innerHeight);
       setStageMetrics(newMetrics);
       roadBoundariesRef.current = newMetrics.roadBoundaries;
 
-      setCharacterPosition((prev) => {
-        const prevW = prevViewportWidthRef.current || window.innerWidth;
-        const currentXPercent = prev.x / prevW;
-        const newX = Math.max(
-          newMetrics.roadBoundaries.left,
-          Math.min(
-            newMetrics.roadBoundaries.right - newMetrics.characterWidth,
-            currentXPercent * window.innerWidth
-          )
-        );
-        const newPos = {
-          x: newX,
-          y: newMetrics.characterBaseY
-        };
-        characterPositionRef.current = newPos;
-        return newPos;
-      });
+      const prevW = prevViewportWidthRef.current || window.innerWidth;
+      const currentXPercent = characterPositionRef.current.x / prevW;
+      const newX = Math.max(
+        newMetrics.roadBoundaries.left,
+        Math.min(
+          newMetrics.roadBoundaries.right - newMetrics.characterWidth,
+          currentXPercent * window.innerWidth
+        )
+      );
+      const newPos = {
+        x: newX,
+        y: newMetrics.characterBaseY
+      };
+      characterPositionRef.current = newPos;
+      setCharacterPosition(newPos);
 
       prevViewportWidthRef.current = window.innerWidth;
     };
@@ -316,7 +324,6 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   }, []);
 
   const updateCharacterPosition = (pos: Position) => {
-    setCharacterPosition(pos);
     characterPositionRef.current = pos;
 
     // Automatically close dialogue menu if the player walks away from the NPC
@@ -718,6 +725,7 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
       y: characterPositionRef.current.y
     };
 
+    setCharacterPosition(currentPos);
     setShowCharacter(false);
     setIsInteracting(true);
 
@@ -732,14 +740,12 @@ const GameEnvironment: React.FC<GameEnvironmentProps> = ({ onNavigate }) => {
   const handleInteractionComplete = () => {
     if (activePath) {
       const destinationPath = activePath;
-      setTimeout(() => {
-        setInteractiveObjects([]);
-        setIsInteracting(false);
-        setShowCharacter(true);
-        setActivePath(null);
-        setCharacterSpeech(null);
-        onNavigate(destinationPath);
-      }, 10);
+      onNavigate(destinationPath);
+      setInteractiveObjects([]);
+      setIsInteracting(false);
+      setShowCharacter(true);
+      setActivePath(null);
+      setCharacterSpeech(null);
     }
   };
 

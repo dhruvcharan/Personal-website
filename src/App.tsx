@@ -32,39 +32,34 @@ function App() {
 
   const handleNavigate = (path: string) => {
     if (isNavigating) return;
-    
+
     setIsNavigating(true);
-    
-    if (path === '/mail') {
-      openContactModal();
-      setIsNavigating(false);
-      return;
+
+    switch (path) {
+      case '/mail':
+        openContactModal();
+        break;
+      case '/about':
+        setCurrentPage('blogList');
+        window.history.pushState({ page: 'blogList' }, '', '');
+        break;
+      case '/projects':
+        window.open('https://github.com/dhruvcharan', '_blank');
+        setCurrentPage('home');
+        break;
+      case '/linkedin':
+        window.open('https://linkedin.com/in/dhruv-charan', '_blank');
+        setCurrentPage('home');
+        break;
+      case '/now':
+        setCurrentPage('now');
+        window.history.pushState({ page: 'now' }, '', '');
+        break;
+      default:
+        setCurrentPage('home');
     }
 
-    setTimeout(() => {
-      switch(path) {
-        case '/about':
-          setCurrentPage('blogList');
-          window.history.pushState({ page: 'blogList' }, '', '');
-          break;
-        case '/projects':
-          window.open('https://github.com/dhruvcharan', '_blank');
-          setCurrentPage('home'); 
-          break;
-        case '/linkedin':
-          window.open('https://linkedin.com/in/dhruv-charan', '_blank');
-          setCurrentPage('home'); 
-          break;
-        case '/now':
-          setCurrentPage('now');
-          window.history.pushState({ page: 'now' }, '', '');
-          break;
-        default:
-          setCurrentPage('home');
-      }
-      
-      setIsNavigating(false);
-    }, 600); 
+    setIsNavigating(false);
   };
 
   const handleBlogPostClick = (slug: string) => {

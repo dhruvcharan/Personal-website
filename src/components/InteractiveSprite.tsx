@@ -9,6 +9,9 @@ interface InteractiveSpriteProps {
   onInteractionComplete: () => void;
 }
 
+const FRAME_DURATION_MS = 220;
+const FINAL_FRAME_HOLD_MS = 280;
+
 const InteractiveSprite: React.FC<InteractiveSpriteProps> = ({
   type,
   position,
@@ -16,76 +19,50 @@ const InteractiveSprite: React.FC<InteractiveSpriteProps> = ({
   spritePaths,
   onInteractionComplete,
 }) => {
-  console.log(`[InteractiveSprite] Rendering ${type} sprite with position:`, position);
-  
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const animationRef = useRef<NodeJS.Timeout | null>(null);
-  const previousPositionRef = useRef(position);
+  const onCompleteRef = useRef(onInteractionComplete);
 
   useEffect(() => {
-    console.log(`[InteractiveSprite] Position changed for ${type}:`, {
-      previous: previousPositionRef.current,
-      current: position,
-      diff: {
-        x: position.x - previousPositionRef.current.x,
-        y: position.y - previousPositionRef.current.y
-      }
-    });
-    previousPositionRef.current = position;
-  }, [position, type]);
+    onCompleteRef.current = onInteractionComplete;
+  }, [onInteractionComplete]);
 
   useEffect(() => {
-    console.log(`[InteractiveSprite] isInteracting changed to ${isInteracting} for ${type}`);
-    
-    if (isInteracting && !isAnimating) {
-      console.log(`[InteractiveSprite] Starting animation for ${type} at position:`, position);
-      setIsAnimating(true);
-      startAnimation();
-    }
+    if (!isInteracting || spritePaths.length === 0) return;
 
-    return () => {
-      if (animationRef.current) {
-        console.log(`[InteractiveSprite] Cleaning up animation timeout for ${type}`);
-        clearTimeout(animationRef.current);
-      }
-    };
-  }, [isInteracting]);
-
-  const startAnimation = () => {
-    console.log(`[InteractiveSprite] Animation starting for ${type} with ${spritePaths.length} frames`);
-    
-    if (animationRef.current) {
-      clearTimeout(animationRef.current);
-    }
+    setIsAnimating(true);
+    setCurrentFrameIndex(0);
 
     let frame = 0;
 
-    const animate = () => {
-      console.log(`[InteractiveSprite] Animating frame ${frame}/${spritePaths.length-1} for ${type} at position:`, position);
-      setCurrentFrameIndex(frame);
-      frame++;
-
-      if (frame >= spritePaths.length) {
-        console.log(`[InteractiveSprite] Animation complete for ${type}, calling onInteractionComplete`);
+    const stepNextFrame = () => {
+      frame += 1;
+      if (frame < spritePaths.length) {
+        setCurrentFrameIndex(frame);
+        const holdTime = frame === spritePaths.length - 1 ? FINAL_FRAME_HOLD_MS : FRAME_DURATION_MS;
+        animationRef.current = setTimeout(stepNextFrame, holdTime);
+      } else {
         setIsAnimating(false);
-        onInteractionComplete();
-        return;
+        onCompleteRef.current();
       }
-
-      animationRef.current = setTimeout(animate, 100); 
     };
 
-    animationRef.current = setTimeout(animate, 300);
-  };
+    const initialHold = spritePaths.length === 1 ? FINAL_FRAME_HOLD_MS : FRAME_DURATION_MS;
+    animationRef.current = setTimeout(stepNextFrame, initialHold);
+
+    return () => {
+      if (animationRef.current) {
+        clearTimeout(animationRef.current);
+        animationRef.current = null;
+      }
+    };
+  }, [isInteracting, spritePaths]);
 
   if (!isInteracting && !isAnimating) {
-    console.log(`[InteractiveSprite] ${type} sprite not visible (not interacting and not animating)`);
     return null;
   }
 
-  console.log(`[InteractiveSprite] Rendering ${type} sprite at position:`, position);
-  
   return (
     <div
       className={`interactive-sprite ${type} ${isAnimating ? 'animating' : ''}`}
@@ -93,17 +70,21 @@ const InteractiveSprite: React.FC<InteractiveSpriteProps> = ({
         position: 'absolute',
         top: 0,
         left: 0,
-        transform: `translate(${position.x}px, ${position.y}px)`,
+        transform: `translate3d(${Math.round(position.x)}px, ${Math.round(position.y)}px, 0)`,
+        marginLeft: 'calc(var(--char-width, 128px) * -0.25)',
         backgroundImage: `url(${spritePaths[currentFrameIndex]})`,
-        width: 'var(--char-width, 128px)',
+        width: 'calc(var(--char-width, 128px) * 1.5)',
         height: 'var(--char-height, 142px)',
-        backgroundSize: 'contain',
+        backgroundSize: '100% auto',
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center bottom',
         imageRendering: 'pixelated',
-        zIndex: 1000
+        willChange: 'transform, background-image',
+        zIndex: 1000,
       }}
-    />
+    >
+      <div className="character-ground-shadow" />
+    </div>
   );
 };
 
